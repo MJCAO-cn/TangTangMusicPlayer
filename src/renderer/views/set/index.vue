@@ -54,7 +54,6 @@
           <about-tab />
         </div>
 
-
         <div class="h-20"></div>
         <play-bottom />
       </div>
