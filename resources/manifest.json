@@ -1,27 +1,17 @@
 {
-  "name": "Alger Music Player",
-  "short_name": "AlgerMusic",
-  "description": "AlgerMusicPlayer 音乐播放器，支持在线播放、歌词显示、音乐下载等功能。",
+  "name": "糖糖音乐播放器",
+  "short_name": "糖糖音乐",
+  "description": "糖糖音乐播放器，支持音乐搜索、在线播放、歌词显示、歌单管理与本地音乐下载。",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#ec5a9d",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "/icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    },
-    {
-      "src": "/icon-512-maskable.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
+      "src": "/tangtang-mark.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
     }
   ]
 }
