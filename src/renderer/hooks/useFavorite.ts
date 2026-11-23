@@ -29,11 +29,8 @@ export function useFavorite() {
       playerStore.removeFromFavorite(favoriteId);
     } else {
       playerStore.addToFavorite(favoriteId);
-      // 字符串 ID（如 B 站视频）保留收藏功能；仅数字 ID 来源触发自动下载。
-      const numericId = Number(favoriteId);
-      if (Number.isSafeInteger(numericId) && numericId > 0) {
-        await downloadMusic(playMusic.value as SongResult);
-      }
+      // 下载 composable 会提示不支持的 ID；收藏状态不会因此回滚。
+      await downloadMusic(playMusic.value as SongResult);
     }
   };
 
