@@ -41,6 +41,13 @@ function sanitizeFilename(filename: string): string {
   return sanitized;
 }
 
+function normalizeAudioExtension(value: unknown): string {
+  const extension = typeof value === 'string' ? value.toLowerCase().replace(/^\./, '') : '';
+  return ['mp3', 'flac', 'm4a', 'aac', 'wav', 'ogg', 'ape', 'wma'].includes(extension)
+    ? extension
+    : 'mp3';
+}
+
 function validateDownloadUrl(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > 8192) {
     throw new Error('Invalid download URL');
@@ -193,7 +200,12 @@ class DownloadManager {
     songInfo: any;
     type?: string;
   }): Promise<string> {
-    if (!payload || typeof payload !== 'object' || !payload.songInfo || typeof payload.songInfo !== 'object') {
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      !payload.songInfo ||
+      typeof payload.songInfo !== 'object'
+    ) {
       throw new Error('Invalid download task');
     }
     const url = validateDownloadUrl(payload.url);
@@ -211,7 +223,7 @@ class DownloadManager {
       url,
       filename,
       songInfo: payload.songInfo,
-      type: payload.type || 'mp3',
+      type: normalizeAudioExtension(payload.type),
       state: 'queued',
       progress: 0,
       loaded: 0,
@@ -235,14 +247,19 @@ class DownloadManager {
       throw new Error('Invalid download batch');
     }
     const items = payload.items.map((item) => {
-      if (!item || typeof item !== 'object' || !item.songInfo || typeof item.songInfo !== 'object') {
+      if (
+        !item ||
+        typeof item !== 'object' ||
+        !item.songInfo ||
+        typeof item.songInfo !== 'object'
+      ) {
         throw new Error('Invalid download batch item');
       }
       return {
         url: validateDownloadUrl(item.url),
         filename: sanitizeFilename(item.filename),
         songInfo: item.songInfo,
-        type: item.type || 'mp3'
+        type: normalizeAudioExtension(item.type)
       };
     });
 
@@ -265,7 +282,7 @@ class DownloadManager {
         url: item.url,
         filename: item.filename,
         songInfo: item.songInfo,
-        type: item.type || 'mp3',
+        type: item.type,
         state: 'queued',
         progress: 0,
         loaded: 0,
@@ -443,7 +460,9 @@ class DownloadManager {
     const resolvedPath = path.resolve(filePath);
     const configStore = getStore();
     const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
-    const recordKey = Object.keys(songInfos).find((storedPath) => path.resolve(storedPath) === resolvedPath);
+    const recordKey = Object.keys(songInfos).find(
+      (storedPath) => path.resolve(storedPath) === resolvedPath
+    );
     if (!recordKey) return null;
 
     try {
