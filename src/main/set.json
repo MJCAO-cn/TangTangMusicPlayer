@@ -10,8 +10,8 @@
   "realIP": "",
   "noAnimate": false,
   "animationSpeed": 1,
-  "author": "Alger",
-  "authorUrl": "https://github.com/algerkong",
+  "author": "糖糖音乐播放器开发团队",
+  "authorUrl": "https://github.com/MJCAO-cn/TangTangMusicPlayer",
   "musicApiPort": 30488,
   "closeAction": "ask",
   "musicQuality": "higher",
@@ -25,7 +25,11 @@
   "alwaysShowDownloadButton": false,
   "unlimitedDownload": false,
   "enableMusicUnblock": true,
-  "enabledMusicSources": ["migu", "kugou", "pyncmd"],
+  "enabledMusicSources": [
+    "migu",
+    "kugou",
+    "pyncmd"
+  ],
   "showTopAction": false,
   "contentZoomFactor": 1,
   "autoTheme": false,
