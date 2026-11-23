@@ -135,7 +135,15 @@
             class="cursor-pointer"
             @click="selectItem('user')"
           />
-          <span v-else class="login-label" @click="toLogin">{{ t('comp.searchBar.login') }}</span>
+          <n-avatar
+            v-else
+            circle
+            :size="26"
+            :src="defaultAvatar"
+            :title="t('comp.searchBar.login')"
+            class="cursor-pointer"
+            @click="toLogin"
+          />
         </div>
       </template>
       <div class="user-menu">
