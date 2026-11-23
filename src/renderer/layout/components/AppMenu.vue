@@ -42,7 +42,7 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
-import icon from '@/assets/icon.png';
+import icon from '@/assets/tangtang-mark.svg';
 import { useSettingsStore } from '@/store';
 import { isMobile } from '@/utils';
 
