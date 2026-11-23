@@ -76,22 +76,20 @@ export function useSongItem(props: { item: SongResult; canRemove?: boolean }) {
   // 切换收藏状态
   const toggleFavorite = async (e: Event) => {
     e && e.stopPropagation();
-    const numericId =
-      typeof props.item.id === 'string' ? parseInt(props.item.id, 10) : props.item.id;
-
-    if (!Number.isSafeInteger(numericId) || numericId <= 0) {
-      message.error(t('songItem.message.downloadFailed'));
-      return;
-    }
+    const favoriteId = props.item.id;
+    if (typeof favoriteId !== 'number' && typeof favoriteId !== 'string') return;
 
     if (isFavorite.value) {
-      playerStore.removeFromFavorite(numericId);
+      playerStore.removeFromFavorite(favoriteId);
       return;
     }
 
-    // 先完成收藏，再自动加入下载队列；下载失败不回滚用户的收藏操作。
-    playerStore.addToFavorite(numericId);
-    await downloadMusic(props.item);
+    // 先完成收藏；数字 ID 来源再自动加入下载队列，字符串 ID 来源仍可正常收藏。
+    playerStore.addToFavorite(favoriteId);
+    const numericId = Number(favoriteId);
+    if (Number.isSafeInteger(numericId) && numericId > 0) {
+      await downloadMusic(props.item);
+    }
   };
 
   // 判断当前歌曲是否为每日推荐歌曲
