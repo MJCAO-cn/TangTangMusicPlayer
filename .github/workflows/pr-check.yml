@@ -5,6 +5,10 @@ on:
     branches: [main]
     types: [opened, edited, synchronize, reopened]
 
+concurrency:
+  group: tangtang-pr-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # 检查 PR 标题是否符合 Conventional Commits 规范
   pr-title:
