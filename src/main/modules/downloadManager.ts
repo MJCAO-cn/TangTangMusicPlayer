@@ -625,6 +625,7 @@ class DownloadManager {
         requestUrl = pluginMedia.url;
         Object.assign(headers, pluginMedia.headers);
       }
+      const pluginMediaHost = pluginMedia ? new URL(pluginMedia.url).host : null;
 
       // Start download
       // 注意：axios 默认只接受 2xx，403/410 会直接抛错进入 catch，导致下方"直链过期重新解析"
@@ -636,6 +637,18 @@ class DownloadManager {
         timeout: 30000,
         signal: controller.signal,
         headers,
+        maxRedirects: 5,
+        beforeRedirect: (options) => {
+          const redirectHost = options.hostname || options.host;
+          if (!redirectHost) throw new Error('Invalid download redirect');
+          const redirectUrl = new URL(
+            options.path || '/',
+            `${options.protocol || 'https:'}//${redirectHost}`
+          );
+          if (!pluginMediaHost || redirectUrl.host !== pluginMediaHost) {
+            validateDownloadUrl(redirectUrl.toString());
+          }
+        },
         validateStatus: (status) =>
           (status >= 200 && status < 300) || status === 403 || status === 410
       });
