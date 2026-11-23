@@ -66,6 +66,7 @@
 
       <!-- 应用标题：Mac 靠左侧紧随控制按钮，其他系统靠左 -->
       <span class="title-bar__brand" :class="{ 'title-bar__brand--mac': isElectron && isMac }">
+        <img :src="brandMark" class="title-bar__brand-icon" alt="" />
         糖糖音乐播放器
       </span>
     </div>
@@ -148,6 +149,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import CloseAppConfirmModal from '@/components/common/CloseAppConfirmModal.vue';
+import brandMark from '@/assets/tangtang-mark.svg';
 import { useWindowControls } from '@/hooks/useWindowControls';
 import { isElectron } from '@/utils';
 
@@ -251,8 +253,19 @@ onUnmounted(() => {
 }
 
 .title-bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
   @apply truncate text-xs font-medium tracking-wide text-neutral-600 dark:text-neutral-300;
   pointer-events: none;
+}
+
+.title-bar__brand-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .title-bar__brand--mac {
