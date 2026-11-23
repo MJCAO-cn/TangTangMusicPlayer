@@ -1,10 +1,10 @@
 {
-  "name": "AlgerMusicPlayer",
+  "name": "tangtang-music-player",
   "version": "5.1.0",
-  "description": "Alger Music Player",
+  "description": "糖糖音乐播放器",
   "author": "Alger <algerkc@qq.com>",
   "main": "./out/main/index.js",
-  "homepage": "https://github.com/algerkong/AlgerMusicPlayer",
+  "homepage": "https://github.com/MJCAO-cn/TangTangMusicPlayer",
   "scripts": {
     "prepare": "husky",
     "format": "prettier --write ./src",
@@ -131,13 +131,13 @@
     "vue-tsc": "^2.2.12"
   },
   "build": {
-    "appId": "com.alger.music",
-    "productName": "AlgerMusicPlayer",
+    "appId": "cn.mjcao.tangtangmusicplayer",
+    "productName": "糖糖音乐播放器",
     "publish": [
       {
         "provider": "github",
-        "owner": "algerkong",
-        "repo": "AlgerMusicPlayer"
+        "owner": "MJCAO-cn",
+        "repo": "TangTangMusicPlayer"
       }
     ],
     "extraResources": [
@@ -170,7 +170,7 @@
       "identity": null,
       "type": "distribution",
       "binaries": [
-        "Contents/MacOS/AlgerMusicPlayer"
+        "Contents/MacOS/糖糖音乐播放器"
       ]
     },
     "win": {
@@ -224,10 +224,10 @@
       "uninstallerIcon": "resources/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AlgerMusicPlayer",
+      "shortcutName": "糖糖音乐播放器",
       "include": "build/installer.nsh",
       "deleteAppDataOnUninstall": true,
-      "uninstallDisplayName": "AlgerMusicPlayer"
+      "uninstallDisplayName": "糖糖音乐播放器"
     }
   },
   "pnpm": {
