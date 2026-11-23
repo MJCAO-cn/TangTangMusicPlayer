@@ -80,11 +80,19 @@ export function useSongItem(props: { item: SongResult; canRemove?: boolean }) {
     const numericId =
       typeof props.item.id === 'string' ? parseInt(props.item.id, 10) : props.item.id;
 
+    if (!Number.isSafeInteger(numericId) || numericId <= 0) {
+      message.error(t('songItem.message.downloadFailed'));
+      return;
+    }
+
     if (isFavorite.value) {
       playerStore.removeFromFavorite(numericId);
-    } else {
-      playerStore.addToFavorite(numericId);
+      return;
     }
+
+    // 先完成收藏，再自动加入下载队列；下载失败不回滚用户的收藏操作。
+    playerStore.addToFavorite(numericId);
+    await downloadMusic(props.item);
   };
 
   // 判断当前歌曲是否为每日推荐歌曲
