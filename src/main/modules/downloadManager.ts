@@ -69,6 +69,36 @@ function validateDownloadUrl(value: unknown): string {
     throw new Error('Only HTTP(S) download URLs are allowed');
   }
 
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname.endsWith('.local') ||
+    hostname.includes(':')
+  ) {
+    throw new Error('Local network download URLs are not allowed');
+  }
+
+  const ipv4 = hostname.split('.').map(Number);
+  if (
+    ipv4.length === 4 &&
+    ipv4.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)
+  ) {
+    const [a, b] = ipv4;
+    const isPrivateOrReserved =
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      a >= 224 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127);
+    if (isPrivateOrReserved) {
+      throw new Error('Local network download URLs are not allowed');
+    }
+  }
+
   return parsed.toString();
 }
 
