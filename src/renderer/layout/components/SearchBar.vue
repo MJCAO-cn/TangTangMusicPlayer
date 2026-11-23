@@ -213,9 +213,9 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 import { getSearchKeyword } from '@/api/home';
-import defaultAvatar from '@/assets/tangtang-avatar.svg';
 import { getUserDetail } from '@/api/login';
 import { getSearchSuggestions } from '@/api/search';
+import defaultAvatar from '@/assets/tangtang-avatar.svg';
 import { SEARCH_TYPES, USER_SET_OPTIONS } from '@/const/bar-const';
 import { useZoom } from '@/hooks/useZoom';
 import { useDownloadStore } from '@/store/modules/download';
