@@ -3,9 +3,6 @@ name: TangTang Desktop Build
 on:
   pull_request:
     branches: [main]
-  push:
-    branches:
-      - feature/tangtang-rebrand
 
 permissions:
   contents: read
