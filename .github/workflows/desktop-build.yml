@@ -26,6 +26,7 @@ jobs:
         run: |
           npm audit --json > npm-audit-all.json || true
           node -e "const a=require('./npm-audit-all.json'); for (const [name,v] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,direct:v.isDirect,fix:v.fixAvailable,range:v.range,effects:v.effects,via:v.via}))"
+          npm ls basic-ftp get-uri pac-proxy-agent music-metadata --all || true
       - name: Audit production dependencies
         run: |
           npm audit --omit=dev --json > npm-audit-production.json || true
