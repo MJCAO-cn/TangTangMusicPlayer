@@ -24,7 +24,7 @@
                 <span
                   v-if="settingsStore.setData.isMenuExpanded"
                   class="app-menu-item-text ml-3"
-                  :class="isChecked(index) ? 'text-green-500' : ''"
+                  :class="isChecked(index) ? 'text-primary' : ''"
                   >{{ t(item.meta.title) }}</span
                 >
               </router-link>
@@ -57,7 +57,7 @@ const props = defineProps({
   },
   selectColor: {
     type: String,
-    default: '#22c55e'
+    default: '#ec5a9d'
   },
   menus: {
     type: Array as any,
