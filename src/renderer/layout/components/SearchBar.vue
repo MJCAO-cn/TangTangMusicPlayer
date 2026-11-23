@@ -765,18 +765,8 @@ onMounted(() => {
   border-color: #374151;
 }
 .user-btn:hover {
-  border-color: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.12);
-}
-
-.login-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  padding: 0 8px;
-}
-.dark .login-label {
-  color: #9ca3af;
+  border-color: #ec5a9d;
+  box-shadow: 0 0 0 2px rgba(236, 90, 157, 0.12);
 }
 
 /* ── User menu ───────────────────────────────────────── */
