@@ -2,7 +2,7 @@
   "name": "tangtang-music-player",
   "version": "5.1.0",
   "description": "糖糖音乐播放器",
-  "author": "Alger <algerkc@qq.com>",
+  "author": "糖糖音乐播放器开发团队",
   "main": "./out/main/index.js",
   "homepage": "https://github.com/MJCAO-cn/TangTangMusicPlayer",
   "scripts": {
@@ -168,10 +168,7 @@
       },
       "notarize": false,
       "identity": null,
-      "type": "distribution",
-      "binaries": [
-        "Contents/MacOS/糖糖音乐播放器"
-      ]
+      "type": "distribution"
     },
     "win": {
       "icon": "resources/icon.ico",
@@ -215,7 +212,7 @@
       ],
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
       "category": "Audio",
-      "maintainer": "Alger <algerkc@qq.com>"
+      "maintainer": "糖糖音乐播放器开发团队"
     },
     "nsis": {
       "oneClick": false,
