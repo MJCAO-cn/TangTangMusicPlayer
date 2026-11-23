@@ -6,7 +6,8 @@
         <i class="ri-arrow-left-s-line"></i>
       </div>
       <div v-else class="header-logo">
-        <img :src="brandMark" class="h-7 w-7" alt="" /><span class="logo-text">糖糖音乐</span>
+        <img :src="brandMark" class="h-7 w-7" alt="" />
+        <span class="logo-text">糖糖音乐</span>
       </div>
     </div>
 
