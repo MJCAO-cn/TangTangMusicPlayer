@@ -148,8 +148,8 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import CloseAppConfirmModal from '@/components/common/CloseAppConfirmModal.vue';
 import brandMark from '@/assets/tangtang-mark.svg';
+import CloseAppConfirmModal from '@/components/common/CloseAppConfirmModal.vue';
 import { useWindowControls } from '@/hooks/useWindowControls';
 import { isElectron } from '@/utils';
 
@@ -183,7 +183,11 @@ const {
 
 const openDownloadPage = () => {
   if (!isElectron) {
-    window.open('https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest', '_blank', 'noopener,noreferrer');
+    window.open(
+      'https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest',
+      '_blank',
+      'noopener,noreferrer'
+    );
   }
 };
 
