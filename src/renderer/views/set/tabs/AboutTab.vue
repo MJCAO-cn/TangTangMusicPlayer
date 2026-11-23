@@ -139,7 +139,12 @@ const openReleasePage = () => {
     return;
   }
 
-  window.open(updateInfo.value.releaseInfo?.html_url || 'https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest', '_blank', 'noopener,noreferrer');
+  window.open(
+    updateInfo.value.releaseInfo?.html_url ||
+      'https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest',
+    '_blank',
+    'noopener,noreferrer'
+  );
 };
 
 const openManualUpdatePage = async () => {
