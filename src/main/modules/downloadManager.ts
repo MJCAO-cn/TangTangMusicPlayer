@@ -619,7 +619,7 @@ class DownloadManager {
       }
 
       // 本地音源插件直链：pluginmedia:// 携带的请求头由主进程代理附加
-      let requestUrl = task.url;
+      let requestUrl = validateDownloadUrl(task.url);
       const pluginMedia = parsePluginMediaUrl(task.url);
       if (pluginMedia) {
         requestUrl = pluginMedia.url;
