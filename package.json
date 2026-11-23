@@ -60,7 +60,7 @@
     "form-data": "^4.0.5",
     "husky": "^9.1.7",
     "jsencrypt": "^3.5.4",
-    "mpris-service": "^1.1.4",
+    "mpris-service": "^2.1.2",
     "music-metadata": "^12.5.0",
     "netease-cloud-music-api-alger": "^4.32.0",
     "node-fetch": "^2.7.0",
