@@ -131,7 +131,7 @@
             v-if="userStore.user"
             circle
             :size="26"
-            :src="getImgUrl(userStore.user.avatarUrl)"
+            :src="userStore.user.avatarUrl ? getImgUrl(userStore.user.avatarUrl) : defaultAvatar"
             class="cursor-pointer"
             @click="selectItem('user')"
           />
@@ -140,7 +140,7 @@
       </template>
       <div class="user-menu">
         <div v-if="userStore.user" class="user-menu-top" @click="selectItem('user')">
-          <n-avatar circle :size="30" :src="getImgUrl(userStore.user?.avatarUrl)" />
+          <n-avatar circle :size="30" :src="userStore.user?.avatarUrl ? getImgUrl(userStore.user.avatarUrl) : defaultAvatar" />
           <span class="user-name">{{ userStore.user?.nickname }}</span>
         </div>
         <div v-if="userStore.user" class="menu-sep" />
@@ -213,6 +213,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 import { getSearchKeyword } from '@/api/home';
+import defaultAvatar from '@/assets/tangtang-avatar.svg';
 import { getUserDetail } from '@/api/login';
 import { getSearchSuggestions } from '@/api/search';
 import { SEARCH_TYPES, USER_SET_OPTIONS } from '@/const/bar-const';
