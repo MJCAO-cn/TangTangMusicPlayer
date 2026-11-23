@@ -3,6 +3,7 @@ name: TangTang Desktop Build
 on:
   pull_request:
     branches: [main]
+    types: [opened, edited, synchronize, reopened]
 
 concurrency:
   group: tangtang-desktop-${{ github.event.pull_request.number || github.ref }}
