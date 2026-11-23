@@ -1,5 +1,8 @@
 import { computed } from 'vue';
 
+import { useDownload } from './useDownload';
+import type { SongResult } from '@/types/music';
+
 import { playMusic } from '@/hooks/MusicHook';
 import { usePlayerStore } from '@/store/modules/player';
 
@@ -8,6 +11,7 @@ import { usePlayerStore } from '@/store/modules/player';
  */
 export function useFavorite() {
   const playerStore = usePlayerStore();
+  const { downloadMusic } = useDownload();
 
   /** 当前歌曲是否已收藏 */
   const isFavorite = computed(() => {
@@ -16,7 +20,7 @@ export function useFavorite() {
   });
 
   /** 切换收藏状态 */
-  const toggleFavorite = (e?: Event) => {
+  const toggleFavorite = async (e?: Event) => {
     e?.stopPropagation();
     if (!playMusic?.value?.id) return;
 
@@ -25,6 +29,8 @@ export function useFavorite() {
       playerStore.removeFromFavorite(favoriteId);
     } else {
       playerStore.addToFavorite(favoriteId);
+      // 收藏状态优先落地；下载失败由下载 composable 提示，不撤销收藏。
+      await downloadMusic(playMusic.value as SongResult);
     }
   };
 
