@@ -176,8 +176,8 @@ class DownloadManager {
       this.deleteCompleted(filePath)
     );
     ipcMain.handle('download:clear-completed', () => this.clearCompleted());
-    ipcMain.handle('download:get-embedded-lyrics', (_, filePath: string) => {
-      const managedFile = this.getManagedCompletedFile(filePath);
+    ipcMain.handle('download:get-embedded-lyrics', async (_, filePath: string) => {
+      const managedFile = await this.getManagedCompletedFile(filePath);
       return managedFile ? readEmbeddedLyrics(managedFile.filePath) : null;
     });
     ipcMain.handle('download:provide-url', (_, payload: { taskId: string; url: string }) =>
@@ -435,19 +435,29 @@ class DownloadManager {
     }
   }
 
-  private getManagedCompletedFile(filePath: unknown): { filePath: string; recordKey: string } | null {
+  private async getManagedCompletedFile(
+    filePath: unknown
+  ): Promise<{ filePath: string; recordKey: string } | null> {
     if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return null;
 
     const resolvedPath = path.resolve(filePath);
     const configStore = getStore();
     const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
     const recordKey = Object.keys(songInfos).find((storedPath) => path.resolve(storedPath) === resolvedPath);
+    if (!recordKey) return null;
 
-    return recordKey ? { filePath: resolvedPath, recordKey } : null;
+    try {
+      const stat = await fs.promises.lstat(resolvedPath);
+      if (!stat.isFile() || stat.isSymbolicLink()) return null;
+    } catch {
+      return null;
+    }
+
+    return { filePath: resolvedPath, recordKey };
   }
 
   private async deleteCompleted(filePath: string): Promise<boolean> {
-    const managedFile = this.getManagedCompletedFile(filePath);
+    const managedFile = await this.getManagedCompletedFile(filePath);
     if (!managedFile) return false;
 
     try {
