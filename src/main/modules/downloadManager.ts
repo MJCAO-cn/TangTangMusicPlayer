@@ -192,17 +192,23 @@ class DownloadManager {
     songInfo: any;
     type?: string;
   }): Promise<string> {
+    if (!payload || typeof payload !== 'object' || !payload.songInfo || typeof payload.songInfo !== 'object') {
+      throw new Error('Invalid download task');
+    }
+    const url = validateDownloadUrl(payload.url);
+    const filename = sanitizeFilename(payload.filename);
+
     // 重新下载同一首歌前先清掉指向已删除文件的旧记录：
     // 手动删除文件后再下载，记录与磁盘立即一致，不会残留僵尸条目（#757）
-    if (typeof payload.songInfo?.id === 'number') {
+    if (typeof payload.songInfo.id === 'number') {
       await this.pruneMissingCompletedRecords(payload.songInfo.id);
     }
 
     const taskId = crypto.randomUUID();
     const task: DownloadTask = {
       taskId,
-      url: payload.url,
-      filename: payload.filename,
+      url,
+      filename,
       songInfo: payload.songInfo,
       type: payload.type || 'mp3',
       state: 'queued',
@@ -224,6 +230,21 @@ class DownloadManager {
   private async addBatch(payload: {
     items: { url: string; filename: string; songInfo: any; type?: string }[];
   }): Promise<{ batchId: string; taskIds: string[] }> {
+    if (!payload || !Array.isArray(payload.items) || payload.items.length > 500) {
+      throw new Error('Invalid download batch');
+    }
+    const items = payload.items.map((item) => {
+      if (!item || typeof item !== 'object' || !item.songInfo || typeof item.songInfo !== 'object') {
+        throw new Error('Invalid download batch item');
+      }
+      return {
+        url: validateDownloadUrl(item.url),
+        filename: sanitizeFilename(item.filename),
+        songInfo: item.songInfo,
+        type: item.type || 'mp3'
+      };
+    });
+
     // 批量下载同样先对齐一次记录与磁盘状态（只读一次配置，避免并发写放大）
     await this.pruneMissingCompletedRecords();
 
@@ -231,12 +252,12 @@ class DownloadManager {
     const taskIds: string[] = [];
 
     this.batchTracker.set(batchId, {
-      total: payload.items.length,
+      total: items.length,
       finished: 0,
       success: 0
     });
 
-    for (const item of payload.items) {
+    for (const item of items) {
       const taskId = crypto.randomUUID();
       const task: DownloadTask = {
         taskId,
