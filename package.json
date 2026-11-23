@@ -238,5 +238,13 @@
   "optionalDependencies": {
     "jsbi": "^4.3.2",
     "x11": "^2.3.0"
+  },
+  "overrides": {
+    "basic-ftp": "^6.2.6",
+    "get-uri": "^8.0.2",
+    "pac-proxy-agent": "^9.1.1",
+    "proxy-agent": "^8.0.3",
+    "file-type": "$file-type",
+    "music-metadata": "$music-metadata"
   }
 }
