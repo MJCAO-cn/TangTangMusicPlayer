@@ -12,6 +12,9 @@ import type { DownloadSongInfo } from '../../shared/download';
 
 const ipcRenderer = isElectron ? window.electron.ipcRenderer : null;
 
+// 跨 SongItem composable 实例共享，避免快速连点或列表重复渲染导致同曲并发入队。
+const downloadingSongIds = new Set<number>();
+
 /**
  * Map a SongResult to the minimal DownloadSongInfo shape required by the download store.
  */
@@ -50,13 +53,19 @@ export const useDownload = () => {
    * Resolves the URL in the renderer then delegates queuing to the download store.
    */
   const downloadMusic = async (song: SongResult) => {
-    if (isDownloading.value) {
+    const songId = Number(song.id);
+    if (!Number.isSafeInteger(songId) || songId <= 0) {
+      message.error(t('songItem.message.getUrlFailed'));
+      return;
+    }
+    if (isDownloading.value || downloadingSongIds.has(songId)) {
       message.warning(t('songItem.message.downloading'));
       return;
     }
 
     try {
       isDownloading.value = true;
+      downloadingSongIds.add(songId);
 
       const musicUrl = (await getSongUrl(song.id as number, song, true)) as any;
       const url = extractDownloadUrl(musicUrl);
@@ -74,6 +83,7 @@ export const useDownload = () => {
       console.error('Download error:', error);
       message.error(error.message || t('songItem.message.downloadFailed'));
     } finally {
+      downloadingSongIds.delete(songId);
       isDownloading.value = false;
     }
   };
