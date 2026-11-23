@@ -84,12 +84,9 @@ export function useSongItem(props: { item: SongResult; canRemove?: boolean }) {
       return;
     }
 
-    // 先完成收藏；数字 ID 来源再自动加入下载队列，字符串 ID 来源仍可正常收藏。
+    // 先完成收藏；下载 composable 会对不支持的 ID 给出明确提示，不回滚收藏。
     playerStore.addToFavorite(favoriteId);
-    const numericId = Number(favoriteId);
-    if (Number.isSafeInteger(numericId) && numericId > 0) {
-      await downloadMusic(props.item);
-    }
+    await downloadMusic(props.item);
   };
 
   // 判断当前歌曲是否为每日推荐歌曲
