@@ -6,7 +6,7 @@
         <i class="ri-arrow-left-s-line"></i>
       </div>
       <div v-else class="header-logo">
-        <span class="logo-text">Alger</span>
+        <img :src="brandMark" class="h-7 w-7" alt="" /><span class="logo-text">糖糖音乐</span>
       </div>
     </div>
 
@@ -31,6 +31,8 @@
 import { computed, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+
+import brandMark from '@/assets/tangtang-mark.svg';
 
 const route = useRoute();
 const router = useRouter();
@@ -85,7 +87,7 @@ const openSettings = () => {
   @apply flex items-center;
 
   .logo-text {
-    @apply text-lg font-bold text-green-500;
+    @apply ml-2 text-base font-bold tracking-wide text-rose-500;
   }
 }
 
