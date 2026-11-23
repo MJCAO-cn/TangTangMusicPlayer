@@ -477,7 +477,7 @@ class DownloadManager {
       const sanitizedFilename = sanitizeFilename(formattedFilename);
 
       // Temp directory
-      const tempDir = path.join(os.tmpdir(), 'AlgerMusicPlayerTemp');
+      const tempDir = path.join(os.tmpdir(), 'TangTangMusicPlayerTemp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
@@ -1117,28 +1117,32 @@ class DownloadManager {
   }
 
   private cleanOrphanedTempFiles(): void {
-    try {
-      const tempDir = path.join(os.tmpdir(), 'AlgerMusicPlayerTemp');
-      if (!fs.existsSync(tempDir)) return;
+    const knownTempPaths = new Set(
+      [...this.tasks.values()].map((task) => task.tempFilePath).filter(Boolean)
+    );
+    // Keep the legacy folder in the cleanup set so persisted paused tasks from
+    // AlgerMusicPlayer can resume from their existing partial download.
+    const tempDirs = ['TangTangMusicPlayerTemp', 'AlgerMusicPlayerTemp'].map((name) =>
+      path.join(os.tmpdir(), name)
+    );
 
-      const knownTempPaths = new Set(
-        [...this.tasks.values()].map((t) => t.tempFilePath).filter(Boolean)
-      );
-
-      const files = fs.readdirSync(tempDir);
-      for (const file of files) {
-        if (!file.endsWith('.tmp')) continue;
-        const fullPath = path.join(tempDir, file);
-        if (!knownTempPaths.has(fullPath)) {
-          try {
-            fs.unlinkSync(fullPath);
-          } catch {
-            // ignore
+    for (const tempDir of tempDirs) {
+      try {
+        if (!fs.existsSync(tempDir)) continue;
+        for (const file of fs.readdirSync(tempDir)) {
+          if (!file.endsWith('.tmp')) continue;
+          const fullPath = path.join(tempDir, file);
+          if (!knownTempPaths.has(fullPath)) {
+            try {
+              fs.unlinkSync(fullPath);
+            } catch {
+              // Best-effort cleanup; a locked temp file is retried on next launch.
+            }
           }
         }
+      } catch {
+        // A missing or temporarily inaccessible temp directory must not block startup.
       }
-    } catch {
-      // Temp dir may not exist
     }
   }
 }
