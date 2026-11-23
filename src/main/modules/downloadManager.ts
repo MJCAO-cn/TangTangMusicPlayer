@@ -176,9 +176,10 @@ class DownloadManager {
       this.deleteCompleted(filePath)
     );
     ipcMain.handle('download:clear-completed', () => this.clearCompleted());
-    ipcMain.handle('download:get-embedded-lyrics', (_, filePath: string) =>
-      readEmbeddedLyrics(filePath)
-    );
+    ipcMain.handle('download:get-embedded-lyrics', (_, filePath: string) => {
+      const managedFile = this.getManagedCompletedFile(filePath);
+      return managedFile ? readEmbeddedLyrics(managedFile.filePath) : null;
+    });
     ipcMain.handle('download:provide-url', (_, payload: { taskId: string; url: string }) =>
       this.provideUrl(payload.taskId, payload.url)
     );
@@ -434,30 +435,36 @@ class DownloadManager {
     }
   }
 
+  private getManagedCompletedFile(filePath: unknown): { filePath: string; recordKey: string } | null {
+    if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return null;
+
+    const resolvedPath = path.resolve(filePath);
+    const configStore = getStore();
+    const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
+    const recordKey = Object.keys(songInfos).find((storedPath) => path.resolve(storedPath) === resolvedPath);
+
+    return recordKey ? { filePath: resolvedPath, recordKey } : null;
+  }
+
   private async deleteCompleted(filePath: string): Promise<boolean> {
+    const managedFile = this.getManagedCompletedFile(filePath);
+    if (!managedFile) return false;
+
     try {
-      // 直接 unlink：既省掉一次同步 stat（下载目录可能在慢速磁盘或网络挂载盘上，
-      // 同步调用会阻塞主进程），也避免 exists 之后文件被别处删除的竞态。
-      try {
-        await fs.promises.unlink(filePath);
-      } catch (error: any) {
-        // 文件本就不存在，保留记录交给 getCompleted 清理
-        if (error?.code === 'ENOENT') {
-          return false;
-        }
-        console.error('Error deleting file:', error);
-      }
-
-      const configStore = getStore();
-      const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
-      delete songInfos[filePath];
-      configStore.set('downloadedSongs', songInfos);
-
-      return true;
-    } catch (error) {
+      // 仅允许删除下载管理器登记的已下载文件，禁止通过 IPC unlink 任意本地路径。
+      await fs.promises.unlink(managedFile.filePath);
+    } catch (error: any) {
+      // 文件本就不存在，保留记录交给 getCompleted 清理。
+      if (error?.code === 'ENOENT') return false;
       console.error('Error deleting file:', error);
       return false;
     }
+
+    const configStore = getStore();
+    const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
+    delete songInfos[managedFile.recordKey];
+    configStore.set('downloadedSongs', songInfos);
+    return true;
   }
 
   private clearCompleted(): boolean {
@@ -472,7 +479,14 @@ class DownloadManager {
     const task = this.tasks.get(taskId);
     if (!task) return false;
 
-    task.url = url;
+    let safeUrl: string;
+    try {
+      safeUrl = validateDownloadUrl(url);
+    } catch {
+      return false;
+    }
+
+    task.url = safeUrl;
     if (task.state === 'queued' || task.state === 'paused') {
       task.state = 'queued';
       this.sendStateChange(task);
