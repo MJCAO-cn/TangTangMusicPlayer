@@ -41,8 +41,7 @@ export function useSongItem(props: { item: SongResult; canRemove?: boolean }) {
   });
 
   const isDislike = computed(() => {
-    const numericId =
-      typeof props.item.id === 'string' ? parseInt(props.item.id, 10) : props.item.id;
+    const numericId = Number(props.item.id);
     return playerStore.dislikeList.includes(numericId);
   });
 
