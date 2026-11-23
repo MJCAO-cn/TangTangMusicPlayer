@@ -28,10 +28,41 @@ import {
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/[<>:"/\\|?*]/g, '_')
+  let sanitized = String(filename || 'unknown')
+    .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
     .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/[. ]+$/g, '')
+    .trim()
+    .slice(0, 180);
+
+  if (!sanitized || /^\.+$/.test(sanitized)) sanitized = 'unknown';
+  const reservedName = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+  if (reservedName.test(sanitized.split('.')[0])) sanitized = `_${sanitized}`;
+  return sanitized;
+}
+
+function validateDownloadUrl(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 8192) {
+    throw new Error('Invalid download URL');
+  }
+
+  if (value.startsWith('pluginmedia://')) {
+    if (!parsePluginMediaUrl(value)) throw new Error('Invalid plugin media URL');
+    return value;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('Invalid download URL');
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error('Only HTTP(S) download URLs are allowed');
+  }
+
+  return parsed.toString();
 }
 
 function parseLyrics(lyricsText: string): Map<string, string> {
