@@ -832,11 +832,22 @@ class DownloadManager {
             coverImageBuffer = Buffer.from(base64Match[1], 'base64');
           }
         } else {
+          const coverUrl = validateDownloadUrl(picUrl.replace(/^http:/, 'https:'));
           const coverResponse = await axios({
-            url: picUrl.replace('http://', 'https://'),
+            url: coverUrl,
             method: 'GET',
             responseType: 'arraybuffer',
-            timeout: 10000
+            timeout: 10000,
+            maxRedirects: 5,
+            beforeRedirect: (options) => {
+              const redirectHost = options.hostname || options.host;
+              if (!redirectHost) throw new Error('Invalid cover redirect');
+              const redirectUrl = new URL(
+                options.path || '/',
+                `${options.protocol || 'https:'}//${redirectHost}`
+              );
+              validateDownloadUrl(redirectUrl.toString());
+            }
           });
 
           const originalCoverBuffer = Buffer.from(coverResponse.data);
