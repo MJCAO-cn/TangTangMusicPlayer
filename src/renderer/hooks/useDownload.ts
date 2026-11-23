@@ -20,7 +20,7 @@ const downloadingSongIds = new Set<number>();
  */
 function toDownloadSongInfo(song: SongResult): DownloadSongInfo {
   return {
-    id: song.id as number,
+    id: Number(song.id),
     name: song.name,
     picUrl: song.picUrl ?? song.al?.picUrl ?? '',
     ar: (song.ar || song.song?.artists || []).map((a: { name: string }) => ({ name: a.name })),
@@ -67,7 +67,7 @@ export const useDownload = () => {
       isDownloading.value = true;
       downloadingSongIds.add(songId);
 
-      const musicUrl = (await getSongUrl(song.id as number, song, true)) as any;
+      const musicUrl = (await getSongUrl(songId, song, true)) as any;
       const url = extractDownloadUrl(musicUrl);
       // 拿不到可下载的直链时报错，不能提示"已加入下载队列"：
       // 否则任务入队后立刻在主进程失败，用户看到的是"有提示、无文件、无进度"（#757）
