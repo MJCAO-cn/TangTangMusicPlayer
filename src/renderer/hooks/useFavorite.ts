@@ -1,10 +1,10 @@
 import { computed } from 'vue';
 
-import { useDownload } from './useDownload';
-import type { SongResult } from '@/types/music';
-
 import { playMusic } from '@/hooks/MusicHook';
 import { usePlayerStore } from '@/store/modules/player';
+import type { SongResult } from '@/types/music';
+
+import { useDownload } from './useDownload';
 
 /**
  * 当前歌曲的收藏状态管理 composable
