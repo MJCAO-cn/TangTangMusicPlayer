@@ -128,7 +128,9 @@
     "vue": "^3.5.25",
     "vue-eslint-parser": "^10.2.0",
     "vue-router": "^4.6.4",
-    "vue-tsc": "^3.3.14"
+    "vue-tsc": "^3.3.14",
+    "file-type": "^22.3.0",
+    "music-metadata": "^12.8.0"
   },
   "build": {
     "appId": "cn.mjcao.tangtangmusicplayer",
