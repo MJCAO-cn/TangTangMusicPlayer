@@ -5,7 +5,6 @@ import vue from 'eslint-plugin-vue';
 import vueParser from 'vue-eslint-parser';
 import prettier from 'eslint-plugin-prettier';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
-import vueScopedCss from 'eslint-plugin-vue-scoped-css';
 import globals from 'globals';
 
 export default [
@@ -158,7 +157,6 @@ export default [
       '@typescript-eslint': typescript,
       prettier,
       'simple-import-sort': simpleImportSort,
-      'vue-scoped-css': vueScopedCss
     },
     rules: {
       // Vue 3 推荐规则
@@ -172,12 +170,6 @@ export default [
       'vue/no-reserved-props': 'off',
       'vue/no-v-html': 'off',
       'vue/first-attribute-linebreak': 'off',
-      'vue-scoped-css/enforce-style-type': [
-        'error',
-        {
-          allows: ['scoped']
-        }
-      ],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
