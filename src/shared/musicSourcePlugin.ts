@@ -37,12 +37,17 @@ export const parsePluginMediaUrl = (
     if (!url) return null;
 
     const headers: Record<string, string> = {};
-    for (const [name, content] of Object.entries(payload.headers || {})) {
+    const headerEntries = Object.entries(payload.headers || {});
+    if (headerEntries.length > 32) return null;
+
+    for (const [name, content] of headerEntries) {
       if (
-        !/^[!#$%&'*+.^_`|~\w-]+$/.test(name) ||
+        !/^[!#$%&'*+.^_`|~\\w-]+$/.test(name) ||
         name.length > 128 ||
         typeof content !== 'string' ||
-        content.length > 1024
+        content.length > 1024 ||
+        /[\\r\\n\\0]/.test(content) ||
+        /^(host|connection|content-length|transfer-encoding|upgrade|proxy-.+)$/i.test(name)
       ) {
         return null;
       }
