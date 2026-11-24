@@ -18,6 +18,7 @@ import type {
 } from '../../shared/download';
 import { parsePluginMediaUrl } from '../../shared/musicSourcePlugin';
 import { getStore } from './config';
+import { safeHttpAgent, safeHttpsAgent } from './safeNetwork';
 import {
   buildMp3TagPatch,
   getCoverMime,
@@ -55,7 +56,10 @@ function validateDownloadUrl(value: unknown): string {
   }
 
   if (value.startsWith('pluginmedia://')) {
-    if (!parsePluginMediaUrl(value)) throw new Error('Invalid plugin media URL');
+    const pluginMedia = parsePluginMediaUrl(value);
+    if (!pluginMedia) throw new Error('Invalid plugin media URL');
+    // pluginmedia:// is only a transport wrapper; validate the embedded HTTP(S) destination too.
+    validateDownloadUrl(pluginMedia.url);
     return value;
   }
 
@@ -623,7 +627,7 @@ class DownloadManager {
       let requestUrl = validateDownloadUrl(task.url);
       const pluginMedia = parsePluginMediaUrl(task.url);
       if (pluginMedia) {
-        requestUrl = pluginMedia.url;
+        requestUrl = validateDownloadUrl(pluginMedia.url);
         Object.assign(headers, pluginMedia.headers);
       }
       const pluginMediaHost = pluginMedia ? new URL(pluginMedia.url).host : null;
@@ -638,6 +642,8 @@ class DownloadManager {
         timeout: 30000,
         signal: controller.signal,
         headers,
+        httpAgent: safeHttpAgent,
+        httpsAgent: safeHttpsAgent,
         maxRedirects: 5,
         beforeRedirect: (options) => {
           const redirectHost = options.hostname || options.host;
@@ -646,9 +652,7 @@ class DownloadManager {
             options.path || '/',
             `${options.protocol || 'https:'}//${redirectHost}`
           );
-          if (!pluginMediaHost || redirectUrl.host !== pluginMediaHost) {
-            validateDownloadUrl(redirectUrl.toString());
-          }
+          validateDownloadUrl(redirectUrl.toString());
         },
         validateStatus: (status) =>
           (status >= 200 && status < 300) || status === 403 || status === 410
@@ -852,6 +856,8 @@ class DownloadManager {
             method: 'GET',
             responseType: 'arraybuffer',
             timeout: 10000,
+            httpAgent: safeHttpAgent,
+            httpsAgent: safeHttpsAgent,
             maxRedirects: 5,
             beforeRedirect: (options) => {
               const redirectHost = options.hostname || options.host;
