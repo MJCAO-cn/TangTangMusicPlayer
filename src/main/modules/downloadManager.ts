@@ -29,6 +29,7 @@ import {
 
 function sanitizeFilename(filename: string): string {
   let sanitized = String(filename || 'unknown')
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
     .replace(/\s+/g, ' ')
     .replace(/[. ]+$/g, '')
