@@ -26,10 +26,27 @@ function sanitizeFilename(filename: string): string {
 }
 
 // Electron net.fetch(file://) 在当前版本不会回 206，audio seek 需要主进程自己处理 Range
+const LOCAL_MEDIA_CONTENT_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg',
+  '.flac': 'audio/flac',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp'
+};
+
 function buildLocalFileResponse(
   filePath: string,
   total: number,
-  rangeHeader: string | null
+  rangeHeader: string | null,
+  contentType: string
 ): Response {
   const range416 = () =>
     new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${total}` } });
@@ -57,6 +74,8 @@ function buildLocalFileResponse(
       status: partial ? 206 : 200,
       headers: {
         'Content-Length': String(end - start + 1),
+        'Content-Type': contentType,
+        'X-Content-Type-Options': 'nosniff',
         'Accept-Ranges': 'bytes',
         ...(partial && { 'Content-Range': `bytes ${start}-${end}/${total}` })
       }
@@ -88,13 +107,28 @@ export function initializeFileManager() {
 
       filePath = path.normalize(filePath);
 
-      const stat = await fs.promises.stat(filePath).catch(() => null);
-      if (!stat?.isFile()) {
-        console.error('File not found:', filePath);
+      // local:// 只服务播放器需要的音频和封面图片，禁止借此读取任意文档、配置或凭证文件。
+      const contentType = LOCAL_MEDIA_CONTENT_TYPES[path.extname(filePath).toLowerCase()];
+      if (!contentType) {
+        return new Response(null, { status: 403 });
+      }
+
+      const realFilePath = await fs.promises.realpath(filePath).catch(() => null);
+      if (!realFilePath) {
         return new Response(null, { status: 404 });
       }
 
-      return buildLocalFileResponse(filePath, stat.size, request.headers.get('range'));
+      const stat = await fs.promises.stat(realFilePath).catch(() => null);
+      if (!stat?.isFile()) {
+        return new Response(null, { status: 404 });
+      }
+
+      return buildLocalFileResponse(
+        realFilePath,
+        stat.size,
+        request.headers.get('range'),
+        contentType
+      );
     } catch (error) {
       console.error('Error handling local protocol:', error);
       return new Response(null, { status: 500 });
