@@ -1,10 +1,12 @@
 /**
  * 落雪音乐 HTTP 请求处理（主进程）
- * 绕过渲染进程的 CORS 限制
+ * 绕过渲染进程的 CORS 限制，同时阻止插件请求访问本机、局域网和云元数据地址。
  */
 
 import { ipcMain } from 'electron';
 import fetch, { type RequestInit } from 'node-fetch';
+
+import { safeHttpAgent, safeHttpsAgent, validatePublicHttpUrl } from './safeNetwork';
 
 interface LxHttpRequest {
   url: string;
@@ -27,8 +29,11 @@ interface LxHttpResponse {
   body: any;
 }
 
-// 取消控制器映射
 const abortControllers = new Map<string, AbortController>();
+const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
+const BLOCKED_HEADERS = /^(host|connection|content-length|transfer-encoding|upgrade|proxy-connection|proxy-authorization|proxy-authenticate|keep-alive|te|trailer)$/i;
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 const appendQueryParams = (url: string, params?: Record<string, unknown>): string => {
   if (!params || typeof params !== 'object') return url;
@@ -51,37 +56,82 @@ const appendQueryParams = (url: string, params?: Record<string, unknown>): strin
   }
 };
 
+function validateRequestHeaders(rawHeaders?: Record<string, string>): Record<string, string> {
+  if (!rawHeaders || typeof rawHeaders !== 'object' || Array.isArray(rawHeaders)) return {};
+  const entries = Object.entries(rawHeaders);
+  if (entries.length > 64) throw new Error('请求头数量超出限制');
+
+  const headers: Record<string, string> = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+  };
+
+  for (const [name, value] of entries) {
+    if (
+      !/^[!#$%&'*+.^_`|~\\w-]+$/.test(name) ||
+      name.length > 128 ||
+      BLOCKED_HEADERS.test(name) ||
+      typeof value !== 'string' ||
+      value.length > 8192 ||
+      /[\\r\\n\\0]/.test(value)
+    ) {
+      throw new Error('请求头包含不允许的字段');
+    }
+    headers[name] = value;
+  }
+
+  return headers;
+}
+
 /**
  * 初始化 HTTP 请求处理
  */
 export const initLxMusicHttp = () => {
-  // 处理 HTTP 请求
   ipcMain.handle(
     'lx-music-http-request',
     async (_, request: LxHttpRequest): Promise<LxHttpResponse> => {
-      const { options, requestId } = request;
-      const url = appendQueryParams(request.url, options.params);
-      const controller = new AbortController();
+      if (
+        !request ||
+        typeof request !== 'object' ||
+        typeof request.requestId !== 'string' ||
+        request.requestId.length === 0 ||
+        request.requestId.length > 128 ||
+        typeof request.url !== 'string'
+      ) {
+        throw new Error('无效的 HTTP 请求参数');
+      }
 
-      // 保存取消控制器
+      const requestId = request.requestId;
+      if (abortControllers.has(requestId)) {
+        throw new Error('请求 ID 已在使用中');
+      }
+
+      const options = request.options && typeof request.options === 'object' ? request.options : {};
+      const method = String(options.method || 'GET').toUpperCase();
+      if (!ALLOWED_METHODS.has(method)) {
+        throw new Error('不支持的 HTTP 请求方法');
+      }
+
+      const url = validatePublicHttpUrl(appendQueryParams(request.url, options.params));
+      const headers = validateRequestHeaders(options.headers);
+      const controller = new AbortController();
       abortControllers.set(requestId, controller);
 
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
       try {
-        console.log(`[LxMusicHttp] 请求: ${options.method || 'GET'} ${url}`);
+        const host = new URL(url).hostname;
+        console.log(`[LxMusicHttp] 请求: ${method} ${host}`);
 
-        const method = String(options.method || 'GET').toUpperCase();
         const fetchOptions: RequestInit = {
           method,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            ...(options.headers || {})
-          },
-          signal: controller.signal
+          headers,
+          signal: controller.signal,
+          size: MAX_RESPONSE_BYTES,
+          redirect: 'follow',
+          agent: (parsedUrl) =>
+            parsedUrl.protocol === 'http:' ? safeHttpAgent : safeHttpsAgent
         };
 
-        // 处理请求体
         if (options.body !== undefined) {
           fetchOptions.body = options.body;
         } else if (options.data !== undefined && method !== 'GET' && method !== 'HEAD') {
@@ -90,7 +140,7 @@ export const initLxMusicHttp = () => {
           } else {
             fetchOptions.body = JSON.stringify(options.data);
             fetchOptions.headers = {
-              ...fetchOptions.headers,
+              ...headers,
               'Content-Type': 'application/json'
             };
           }
@@ -98,37 +148,39 @@ export const initLxMusicHttp = () => {
           const formData = new URLSearchParams(options.form);
           fetchOptions.body = formData.toString();
           fetchOptions.headers = {
-            ...fetchOptions.headers,
+            ...headers,
             'Content-Type': 'application/x-www-form-urlencoded'
           };
         } else if (options.formData) {
-          // node-fetch 的 FormData 需要特殊处理
+          const entries = Object.entries(options.formData);
+          if (entries.length > 64) throw new Error('表单字段数量超出限制');
           const FormData = (await import('form-data')).default;
           const formData = new FormData();
-          for (const [key, value] of Object.entries(options.formData)) {
+          for (const [key, value] of entries) {
+            if (typeof value !== 'string' || value.length > MAX_REQUEST_BODY_BYTES) {
+              throw new Error('表单字段内容超出限制');
+            }
             formData.append(key, value);
           }
           fetchOptions.body = formData as any;
-          // FormData 会自动设置 Content-Type
         }
 
-        // 设置超时
-        const timeout = options.timeout || 30000;
-        timeoutId = setTimeout(() => {
-          console.warn(`[LxMusicHttp] 请求超时: ${url}`);
-          controller.abort();
-        }, timeout);
+        if (
+          typeof fetchOptions.body === 'string' &&
+          Buffer.byteLength(fetchOptions.body, 'utf8') > MAX_REQUEST_BODY_BYTES
+        ) {
+          throw new Error('HTTP 请求体不能超过 1 MB');
+        }
+
+        const requestedTimeout = Number(options.timeout);
+        const timeout = Number.isFinite(requestedTimeout)
+          ? Math.min(60000, Math.max(1000, requestedTimeout))
+          : 30000;
+        timeoutId = setTimeout(() => controller.abort(), timeout);
 
         const response = await fetch(url, fetchOptions);
-        clearTimeout(timeoutId);
-        timeoutId = null;
-
-        console.log(`[LxMusicHttp] 响应: ${response.status} ${url}`);
-
-        // 读取响应体
         const rawBody = await response.text();
 
-        // 尝试解析 JSON
         let parsedBody: any = rawBody;
         const contentType = response.headers.get('content-type') || '';
         if (
@@ -139,41 +191,34 @@ export const initLxMusicHttp = () => {
           try {
             parsedBody = JSON.parse(rawBody);
           } catch {
-            // 解析失败则使用原始字符串
+            // JSON 解析失败时保留原始文本。
           }
         }
 
-        // 转换 headers 为普通对象
-        const headers: Record<string, string | string[]> = {};
+        const responseHeaders: Record<string, string | string[]> = {};
         response.headers.forEach((value, key) => {
-          headers[key] = value;
+          responseHeaders[key] = value;
         });
 
-        const result: LxHttpResponse = {
+        return {
           statusCode: response.status,
-          headers,
+          headers: responseHeaders,
           body: parsedBody
         };
-
-        return result;
       } catch (error: any) {
-        console.error(`[LxMusicHttp] 请求失败: ${url}`, error.message);
+        console.error(`[LxMusicHttp] 请求失败: ${new URL(url).hostname}`, error.message);
         throw error;
       } finally {
-        // 清理超时定时器（fetch 出错时前面来不及 clear）与取消控制器
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
+        if (timeoutId) clearTimeout(timeoutId);
         abortControllers.delete(requestId);
       }
     }
   );
 
-  // 处理请求取消
   ipcMain.handle('lx-music-http-cancel', (_, requestId: string) => {
+    if (typeof requestId !== 'string' || requestId.length > 128) return;
     const controller = abortControllers.get(requestId);
     if (controller) {
-      console.log(`[LxMusicHttp] 取消请求: ${requestId}`);
       controller.abort();
       abortControllers.delete(requestId);
     }
@@ -182,12 +227,8 @@ export const initLxMusicHttp = () => {
   console.log('[LxMusicHttp] HTTP 请求处理已初始化');
 };
 
-/**
- * 清理所有正在进行的请求
- */
 export const cleanupLxMusicHttp = () => {
-  for (const [requestId, controller] of abortControllers.entries()) {
-    console.log(`[LxMusicHttp] 清理请求: ${requestId}`);
+  for (const controller of abortControllers.values()) {
     controller.abort();
   }
   abortControllers.clear();
