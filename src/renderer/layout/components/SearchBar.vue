@@ -2,11 +2,7 @@
   <div class="flex items-center gap-2 pb-4 pr-4 pl-1">
     <!-- ── LEFT: Tabs（搜索展开时隐藏）─────────────── -->
     <transition name="tab-slide">
-      <div
-        v-if="!isSearchExpanded && !showBackButton"
-        class="tabs-track flex-shrink-0"
-        
-      >
+      <div v-if="!isSearchExpanded && !showBackButton" class="tabs-track flex-shrink-0">
         <div class="tab-slider-bg" :style="sliderStyle" />
         <button
           v-for="(tab, i) in tabs"
