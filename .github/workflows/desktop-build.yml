@@ -1,0 +1,96 @@
+name: TangTang Desktop Build
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: tangtang-desktop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  security-audit:
+    name: Dependency security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm install
+      - name: Audit all dependencies
+        run: |
+          npm audit --json > npm-audit-all.json || true
+          node -e "const a=require('./npm-audit-all.json'); for (const [name,v] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,direct:v.isDirect,fix:v.fixAvailable,range:v.range,effects:v.effects,via:v.via}))"
+          npm ls basic-ftp get-uri pac-proxy-agent music-metadata --all || true
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --json > npm-audit-production.json || true
+          node -e "const a=require('./npm-audit-production.json'); for (const [name,v] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,direct:v.isDirect,fix:v.fixAvailable,range:v.range,effects:v.effects,via:v.via}))"
+      - name: Enforce dependency audit
+        run: npm audit --audit-level=moderate
+      - name: Upload audit reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: tangtang-dependency-audit
+          path: |
+            npm-audit-all.json
+            npm-audit-production.json
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm install
+      - name: Run unit tests
+        run: npm test
+
+  desktop:
+    name: Build ${{ matrix.target }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: Windows x64
+            os: windows-latest
+            command: npm run build:win
+          - target: macOS Intel
+            os: macos-latest
+            command: npm run build:mac:x64
+          - target: macOS Apple Silicon
+            os: macos-latest
+            command: npm run build:mac:arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm install
+      - name: Build desktop installer
+        run: ${{ matrix.command }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tangtang-${{ matrix.target }}
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+            dist/latest*.yml

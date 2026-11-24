@@ -51,14 +51,13 @@ import { checkUpdate, UpdateResult } from '@/utils/update';
 
 import config from '../../../../../package.json';
 import { APP_UPDATE_STATUS, hasAvailableAppUpdate } from '../../../../shared/appUpdate';
-import { SETTINGS_DATA_KEY, SETTINGS_MESSAGE_KEY } from '../keys';
+import { SETTINGS_MESSAGE_KEY } from '../keys';
 import SBtn from '../SBtn.vue';
 import SettingItem from '../SettingItem.vue';
 import SettingSection from '../SettingSection.vue';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
-const setData = inject(SETTINGS_DATA_KEY)!;
 const message = inject(SETTINGS_MESSAGE_KEY)!;
 
 const checking = ref(false);
@@ -140,7 +139,12 @@ const openReleasePage = () => {
     return;
   }
 
-  window.open(updateInfo.value.releaseInfo?.html_url || setData.value.authorUrl);
+  window.open(
+    updateInfo.value.releaseInfo?.html_url ||
+      'https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest',
+    '_blank',
+    'noopener,noreferrer'
+  );
 };
 
 const openManualUpdatePage = async () => {
@@ -149,11 +153,16 @@ const openManualUpdatePage = async () => {
     return;
   }
 
-  window.open(updateInfo.value.releaseInfo?.html_url || setData.value.authorUrl);
+  window.open(
+    updateInfo.value.releaseInfo?.html_url ||
+      'https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest',
+    '_blank',
+    'noopener,noreferrer'
+  );
 };
 
 const openAuthor = () => {
-  window.open(setData.value.authorUrl);
+  window.open('https://github.com/MJCAO-cn/TangTangMusicPlayer', '_blank', 'noopener,noreferrer');
 };
 
 defineExpose({ checkForUpdates });

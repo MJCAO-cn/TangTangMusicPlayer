@@ -68,7 +68,11 @@
             }}</span>
           </div>
           <div class="user-info">
-            <n-avatar round :size="50" :src="getImgUrl(user.avatarUrl, '50y50')" />
+            <n-avatar
+              round
+              :size="50"
+              :src="user.avatarUrl ? getImgUrl(user.avatarUrl, '50y50') : defaultAvatar"
+            />
             <div class="user-info-list">
               <div class="user-info-item">
                 <div class="label">{{ userDetail.profile.followeds }}</div>
@@ -182,6 +186,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { getUserAlbumSublist, getUserDetail, getUserPlaylist, getUserRecord } from '@/api/user';
+import defaultAvatar from '@/assets/tangtang-avatar.svg';
 import { navigateToMusicList } from '@/components/common/MusicListNavigator';
 import PlayBottom from '@/components/common/PlayBottom.vue';
 import SongItem from '@/components/common/SongItem.vue';

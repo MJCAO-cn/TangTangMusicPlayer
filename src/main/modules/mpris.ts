@@ -48,8 +48,8 @@ export function initializeMpris(mainWindowRef: BrowserWindow) {
 
   try {
     mprisPlayer = Player({
-      name: 'AlgerMusicPlayer',
-      identity: 'Alger Music Player',
+      name: 'TangTangMusicPlayer',
+      identity: '糖糖音乐播放器',
       supportedUriSchemes: ['file', 'http', 'https'],
       supportedMimeTypes: [
         'audio/mpeg',

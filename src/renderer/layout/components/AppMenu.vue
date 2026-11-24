@@ -18,13 +18,13 @@
               <router-link class="app-menu-item-link" :to="item.path">
                 <i
                   class="iconfont app-menu-item-icon"
-                  :style="iconStyle(index)"
+                  :style="iconStyle(Number(index))"
                   :class="item.meta.icon"
                 ></i>
                 <span
                   v-if="settingsStore.setData.isMenuExpanded"
                   class="app-menu-item-text ml-3"
-                  :class="isChecked(index) ? 'text-green-500' : ''"
+                  :class="isChecked(Number(index)) ? 'text-primary' : ''"
                   >{{ t(item.meta.title) }}</span
                 >
               </router-link>
@@ -42,7 +42,7 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
-import icon from '@/assets/icon.png';
+import icon from '@/assets/tangtang-mark.svg';
 import { useSettingsStore } from '@/store';
 import { isMobile } from '@/utils';
 
@@ -57,7 +57,7 @@ const props = defineProps({
   },
   selectColor: {
     type: String,
-    default: '#22c55e'
+    default: '#ec5a9d'
   },
   menus: {
     type: Array as any,
@@ -164,7 +164,7 @@ const toggleMenu = () => {
   @apply transition-all duration-200 text-gray-500 dark:text-gray-400;
 
   &:hover {
-    @apply text-green-500 scale-105 !important;
+    @apply text-primary scale-105 !important;
   }
 }
 

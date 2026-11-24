@@ -1,6 +1,15 @@
 # 更新日志
 
-## v5.1.0
+## [v5.1.0]
+
+### 糖糖音乐播放器定制改造
+
+- 重命名桌面应用、安装包、应用标识及自动更新发布仓库
+- 收藏歌曲时自动加入下载队列，并增加重复下载保护
+- 重设计品牌标识、默认用户头像与主色调
+- 移除捐赠入口、捐赠弹窗、二维码资源及相关组件
+- 更新系统托盘、关于页面、项目文档与下载链接
+
 
 ### ✨ 新功能
 
@@ -42,12 +51,16 @@
 
 - 本地音乐 API 仅监听回环地址，防止外部访问
 - LX Music 脚本执行隔离到 Worker 沙箱
+- 渲染进程启用 Chromium webSecurity 与 sandbox，并将通用 IPC 调用限制为明确白名单
+- 下载、音源脚本和 LX Music HTTP 请求增加公网地址校验，阻止访问本机、局域网及云元数据地址
+- 插件媒体代理校验重定向目标与请求头，远程控制默认仅监听回环地址
+- 本地媒体协议仅允许音频和图片扩展名，配置 IPC 仅允许读取/写入已知设置键
+- 升级 Electron Builder，并覆盖修复 minimatch、xml2js 已知安全公告的依赖版本
 
 ### 🎨 优化
 
 - 全面重构 UI：播放器、播放条、通用组件、列表项、布局、标题栏、搜索页等
 - 重构首页 UI
-- 设置页拆分为 7 个独立 Tab 组件，优化捐赠列表性能
 - 重构音乐和歌词缓存逻辑，支持可配置缓存目录
 - 统一进度追踪机制，移除重复的 rAF 更新循环
 - 优化播放列表持久化，精简序列化字段并添加防抖写入
@@ -98,26 +111,3 @@
 - FLAC 元数据和封面图片处理 - 感谢 [harenchi](https://github.com/souvenp) 的贡献
 - 日推不感兴趣调用官方接口 - 感谢 [harenchi](https://github.com/souvenp) 的贡献
 - 代码提交流程优化，添加 lint-staged
-
-## 赞赏支持☕️
-
-[赞赏列表](https://donate.alger.fun/donate)
-
-<table>
-  <tr>
-    <th style="text-align:center">微信赞赏</th>
-    <th style="width:100px"></th>
-    <th style="text-align:center">支付宝赞赏</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="https://github.com/algerkong/algerkong/blob/main/wechat.jpg?raw=true" alt="WeChat QRcode" width="200"><br>
-      <h6>☕️喝点咖啡继续干</h6>
-    </td>
-    <td></td>
-    <td align="center">
-      <img src="https://github.com/algerkong/algerkong/blob/main/alipay.jpg?raw=true" alt="Alipay QRcode" width="200"><br>
-      <h6>🍔来个汉堡</h6>
-    </td>
-  </tr>
-</table>

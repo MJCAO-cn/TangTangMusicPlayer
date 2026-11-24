@@ -1,10 +1,10 @@
 {
-  "name": "AlgerMusicPlayer",
+  "name": "tangtang-music-player",
   "version": "5.1.0",
-  "description": "Alger Music Player",
-  "author": "Alger <algerkc@qq.com>",
+  "description": "糖糖音乐播放器",
+  "author": "糖糖音乐播放器开发团队",
   "main": "./out/main/index.js",
-  "homepage": "https://github.com/algerkong/AlgerMusicPlayer",
+  "homepage": "https://github.com/MJCAO-cn/TangTangMusicPlayer",
   "scripts": {
     "prepare": "husky",
     "format": "prettier --write ./src",
@@ -15,9 +15,9 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "test": "vitest run",
     "start": "electron-vite preview",
-    "dev": "electron-vite dev",
+    "dev": "npm run icons:generate && electron-vite dev",
     "dev:web": "vite dev",
-    "build": "electron-vite build",
+    "build": "npm run icons:generate && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "fix-sandbox": "node scripts/fix-sandbox.js",
     "build:unpack": "npm run build && electron-builder --dir",
@@ -29,7 +29,8 @@
     "test:e2e": "node scripts/e2e/playback-e2e.mjs",
     "test:all": "npm run typecheck && npm test && ALGER_PLUGIN_NETWORK_E2E=1 npm test && npm run test:e2e && npm run test:e2e:vip",
     "test:e2e:vip": "node scripts/e2e/vip-resolve-e2e.mjs",
-    "test:e2e:bulk": "node scripts/e2e/plugins-bulk-e2e.mjs"
+    "test:e2e:bulk": "node scripts/e2e/plugins-bulk-e2e.mjs",
+    "icons:generate": "node scripts/generate-icons.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,vue,js}": [
@@ -66,7 +67,8 @@
     "node-fetch": "^2.7.0",
     "node-machine-id": "^1.1.12",
     "pinia-plugin-persistedstate": "^4.7.1",
-    "vue-i18n": "^11.2.2"
+    "vue-i18n": "^11.2.2",
+    "he": "^1.2.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
@@ -77,7 +79,7 @@
     "@eslint/js": "^9.39.2",
     "@rushstack/eslint-patch": "^1.15.0",
     "@types/howler": "^2.2.12",
-    "@types/node": "^20.19.26",
+    "@types/node": "^24.19.2",
     "@types/node-fetch": "^2.6.13",
     "@types/tinycolor2": "^1.4.6",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
@@ -93,8 +95,8 @@
     "autoprefixer": "^10.4.22",
     "axios": "^1.13.2",
     "cross-env": "^7.0.3",
-    "electron": "^40.1.0",
-    "electron-builder": "^26.0.12",
+    "electron": "^42.11.16",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
@@ -102,7 +104,6 @@
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-vue": "^10.6.2",
-    "eslint-plugin-vue-scoped-css": "^2.12.0",
     "globals": "^16.5.0",
     "howler": "^2.2.4",
     "lint-staged": "^15.5.2",
@@ -124,20 +125,23 @@
     "vite": "^6.4.1",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-vue-devtools": "7.7.2",
-    "vitest": "^3.2.7",
+    "vitest": "^5.1.1",
     "vue": "^3.5.25",
     "vue-eslint-parser": "^10.2.0",
     "vue-router": "^4.6.4",
-    "vue-tsc": "^2.2.12"
+    "vue-tsc": "^3.3.14",
+    "file-type": "^22.3.0",
+    "music-metadata": "^12.8.0",
+    "sharp": "^0.35.5"
   },
   "build": {
-    "appId": "com.alger.music",
-    "productName": "AlgerMusicPlayer",
+    "appId": "cn.mjcao.tangtangmusicplayer",
+    "productName": "糖糖音乐播放器",
     "publish": [
       {
         "provider": "github",
-        "owner": "algerkong",
-        "repo": "AlgerMusicPlayer"
+        "owner": "MJCAO-cn",
+        "repo": "TangTangMusicPlayer"
       }
     ],
     "extraResources": [
@@ -162,16 +166,12 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSCameraUsageDescription": "Application requests access to the device's camera.",
         "NSDocumentsFolderUsageDescription": "Application requests access to the user's Documents folder.",
         "NSDownloadsFolderUsageDescription": "Application requests access to the user's Downloads folder."
       },
       "notarize": false,
       "identity": null,
-      "type": "distribution",
-      "binaries": [
-        "Contents/MacOS/AlgerMusicPlayer"
-      ]
+      "type": "distribution"
     },
     "win": {
       "icon": "resources/icon.ico",
@@ -189,7 +189,7 @@
       "requestedExecutionLevel": "asInvoker"
     },
     "linux": {
-      "icon": "build/icons",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "AppImage",
@@ -215,7 +215,7 @@
       ],
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
       "category": "Audio",
-      "maintainer": "Alger <algerkc@qq.com>"
+      "maintainer": "糖糖音乐播放器开发团队"
     },
     "nsis": {
       "oneClick": false,
@@ -224,10 +224,10 @@
       "uninstallerIcon": "resources/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AlgerMusicPlayer",
+      "shortcutName": "糖糖音乐播放器",
       "include": "build/installer.nsh",
-      "deleteAppDataOnUninstall": true,
-      "uninstallDisplayName": "AlgerMusicPlayer"
+      "deleteAppDataOnUninstall": false,
+      "uninstallDisplayName": "糖糖音乐播放器"
     }
   },
   "pnpm": {
@@ -239,5 +239,15 @@
   "optionalDependencies": {
     "jsbi": "^4.3.2",
     "x11": "^2.3.0"
+  },
+  "overrides": {
+    "basic-ftp": "^6.2.6",
+    "get-uri": "^8.0.2",
+    "pac-proxy-agent": "^9.1.1",
+    "proxy-agent": "^8.0.3",
+    "file-type": "$file-type",
+    "music-metadata": "$music-metadata",
+    "minimatch": "^11.0.1",
+    "xml2js": "^0.6.2"
   }
 }

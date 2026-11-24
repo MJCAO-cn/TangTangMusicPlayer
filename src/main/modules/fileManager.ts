@@ -6,6 +6,7 @@ import * as path from 'path';
 import { Readable } from 'stream';
 
 import { getStore } from './config';
+import { safeHttpAgent, safeHttpsAgent, validatePublicHttpUrl } from './safeNetwork';
 
 // 创建一个store实例用于存储音频缓存
 const audioCacheStore = new Store({
@@ -26,10 +27,27 @@ function sanitizeFilename(filename: string): string {
 }
 
 // Electron net.fetch(file://) 在当前版本不会回 206，audio seek 需要主进程自己处理 Range
+const LOCAL_MEDIA_CONTENT_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg',
+  '.flac': 'audio/flac',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp'
+};
+
 function buildLocalFileResponse(
   filePath: string,
   total: number,
-  rangeHeader: string | null
+  rangeHeader: string | null,
+  contentType: string
 ): Response {
   const range416 = () =>
     new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${total}` } });
@@ -57,6 +75,8 @@ function buildLocalFileResponse(
       status: partial ? 206 : 200,
       headers: {
         'Content-Length': String(end - start + 1),
+        'Content-Type': contentType,
+        'X-Content-Type-Options': 'nosniff',
         'Accept-Ranges': 'bytes',
         ...(partial && { 'Content-Range': `bytes ${start}-${end}/${total}` })
       }
@@ -88,13 +108,28 @@ export function initializeFileManager() {
 
       filePath = path.normalize(filePath);
 
-      const stat = await fs.promises.stat(filePath).catch(() => null);
-      if (!stat?.isFile()) {
-        console.error('File not found:', filePath);
+      // local:// 只服务播放器需要的音频和封面图片，禁止借此读取任意文档、配置或凭证文件。
+      const contentType = LOCAL_MEDIA_CONTENT_TYPES[path.extname(filePath).toLowerCase()];
+      if (!contentType) {
+        return new Response(null, { status: 403 });
+      }
+
+      const realFilePath = await fs.promises.realpath(filePath).catch(() => null);
+      if (!realFilePath) {
         return new Response(null, { status: 404 });
       }
 
-      return buildLocalFileResponse(filePath, stat.size, request.headers.get('range'));
+      const stat = await fs.promises.stat(realFilePath).catch(() => null);
+      if (!stat?.isFile()) {
+        return new Response(null, { status: 404 });
+      }
+
+      return buildLocalFileResponse(
+        realFilePath,
+        stat.size,
+        request.headers.get('range'),
+        contentType
+      );
     } catch (error) {
       console.error('Error handling local protocol:', error);
       return new Response(null, { status: 500 });
@@ -317,12 +352,9 @@ export function initializeFileManager() {
     async (_, sourceUrl: string): Promise<{ name: string; content: string; url: string }> => {
       let url: URL;
       try {
-        url = new URL(sourceUrl);
+        url = new URL(validatePublicHttpUrl(sourceUrl));
       } catch {
-        throw new Error('无效的音源脚本 URL。');
-      }
-      if (!/^https?:$/.test(url.protocol)) {
-        throw new Error('音源脚本 URL 只支持 HTTP 或 HTTPS。');
+        throw new Error('无效的公开 HTTP(S) 音源脚本 URL。');
       }
 
       const controller = new AbortController();
@@ -330,8 +362,12 @@ export function initializeFileManager() {
       try {
         const response = await fetch(url.toString(), {
           method: 'GET',
-          headers: { 'User-Agent': 'AlgerMusicPlayer/5.1' },
-          signal: controller.signal
+          headers: { 'User-Agent': 'TangTangMusicPlayer/1.0' },
+          signal: controller.signal,
+          size: 2 * 1024 * 1024,
+          redirect: 'follow',
+          agent: (parsedUrl) =>
+            parsedUrl.protocol === 'http:' ? safeHttpAgent : safeHttpsAgent
         });
         if (!response.ok) {
           throw new Error(`HTTP ${response.status} ${response.statusText}`);
@@ -355,7 +391,7 @@ export function initializeFileManager() {
           url: url.toString()
         };
       } catch (error: any) {
-        console.error('下载音乐音源脚本失败:', error);
+        console.error('下载音乐音源脚本失败:', url.hostname, error);
         throw new Error(`脚本下载失败: ${error.message}`);
       } finally {
         clearTimeout(timeoutId);

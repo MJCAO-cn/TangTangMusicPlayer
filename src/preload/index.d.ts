@@ -1,4 +1,4 @@
-import { ElectronAPI } from '@electron-toolkit/preload';
+import type { IpcRendererEvent } from 'electron';
 
 import type { AppUpdateState } from '../shared/appUpdate';
 import type { WebdavConfig, WebdavResult } from '../shared/webdav';
@@ -80,6 +80,16 @@ interface API {
 }
 
 // 自定义IPC渲染进程通信接口
+interface ElectronIpcRenderer {
+  send: (channel: string, ...args: any[]) => void;
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
+  sendSync: (channel: string, ...args: any[]) => any;
+  on: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
+  once: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
+  removeListener: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
+  removeAllListeners: (channel: string) => void;
+}
+
 interface IpcRenderer {
   send: (channel: string, ...args: any[]) => void;
   invoke: (channel: string, ...args: any[]) => Promise<any>;
@@ -89,7 +99,7 @@ interface IpcRenderer {
 
 declare global {
   interface Window {
-    electron: ElectronAPI;
+    electron: { ipcRenderer: ElectronIpcRenderer };
     api: API;
     ipcRenderer: IpcRenderer;
     $message: any;

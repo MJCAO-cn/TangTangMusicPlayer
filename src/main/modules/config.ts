@@ -78,22 +78,57 @@ export function initializeConfig() {
     console.error('[config] 初始化默认配置失败:', error);
   }
 
-  // 定义ipcRenderer监听事件
+  const allowedSetKeys = new Set(Object.keys(set as SetConfig));
+  const hasUnsafeObjectKeys = (value: unknown, depth = 0): boolean => {
+    if (depth > 20) return true;
+    if (!value || typeof value !== 'object') return false;
+    if (Array.isArray(value)) {
+      return value.some((item) => hasUnsafeObjectKeys(item, depth + 1));
+    }
+    return Object.entries(value).some(
+      ([key, item]) =>
+        ['__proto__', 'prototype', 'constructor'].includes(key) ||
+        hasUnsafeObjectKeys(item, depth + 1)
+    );
+  };
+
+  // Renderer 只能读写已知的 set 配置对象，不能通过通用 IPC 读写任意 electron-store 键。
   ipcMain.on('set-store-value', (_, key, value) => {
+    if (
+      key !== 'set' ||
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      Object.keys(value).some((item) => !allowedSetKeys.has(item)) ||
+      hasUnsafeObjectKeys(value)
+    ) {
+      console.warn('[config] 拒绝无效的 renderer 配置写入');
+      return;
+    }
+
     try {
-      store.set(key, value);
+      const serialized = JSON.stringify(value);
+      if (!serialized || Buffer.byteLength(serialized, 'utf8') > 5 * 1024 * 1024) {
+        console.warn('[config] 拒绝超出大小限制的 renderer 配置写入');
+        return;
+      }
+      store.set('set', value as SetConfig);
     } catch (error) {
       // config.json 可能被杀毒/云同步短暂锁定，丢一次写入无害，避免主进程崩溃
-      console.error(`[config] 写入配置失败 key=${key}:`, error);
+      console.error('[config] 写入配置失败:', error);
     }
   });
 
   ipcMain.on('get-store-value', (event, key) => {
+    if (key !== 'set') {
+      event.returnValue = '';
+      return;
+    }
+
     try {
-      const value = store.get(key);
-      event.returnValue = value || '';
+      event.returnValue = store.get('set');
     } catch (error) {
-      console.error(`[config] 读取配置失败 key=${key}:`, error);
+      console.error('[config] 读取配置失败:', error);
       event.returnValue = '';
     }
   });
@@ -102,6 +137,7 @@ export function initializeConfig() {
   // 注意：GPU加速设置必须在应用启动时在app.ready之前设置才能生效
   ipcMain.on('update-gpu-acceleration', (event, enabled: boolean) => {
     try {
+      if (typeof enabled !== 'boolean') return;
       console.log('GPU加速设置更新:', enabled);
       store.set('set.enableGpuAcceleration', enabled);
 

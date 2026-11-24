@@ -290,7 +290,6 @@ const message = useMessage();
 const router = useRouter();
 const playHistoryStore = usePlayHistoryStore();
 const userStore = useUserStore();
-const scrollbarRef = ref();
 const loading = ref(false);
 const noMore = ref(false);
 const displayList = ref<any[]>([]);

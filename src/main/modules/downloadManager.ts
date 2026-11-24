@@ -24,14 +24,87 @@ import {
   getDownloadArtistNames,
   readEmbeddedLyrics
 } from './downloadMetadata';
+import { safeHttpAgent, safeHttpsAgent } from './safeNetwork';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/[<>:"/\\|?*]/g, '_')
+  let sanitized = String(filename || 'unknown')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
     .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/[. ]+$/g, '')
+    .trim()
+    .slice(0, 180);
+
+  if (!sanitized || /^\.+$/.test(sanitized)) sanitized = 'unknown';
+  const reservedName = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+  if (reservedName.test(sanitized.split('.')[0])) sanitized = `_${sanitized}`;
+  return sanitized;
+}
+
+function normalizeAudioExtension(value: unknown): string {
+  const extension = typeof value === 'string' ? value.toLowerCase().replace(/^\./, '') : '';
+  return ['mp3', 'flac', 'm4a', 'aac', 'wav', 'ogg', 'ape', 'wma'].includes(extension)
+    ? extension
+    : 'mp3';
+}
+
+function validateDownloadUrl(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 8192) {
+    throw new Error('Invalid download URL');
+  }
+
+  if (value.startsWith('pluginmedia://')) {
+    const pluginMedia = parsePluginMediaUrl(value);
+    if (!pluginMedia) throw new Error('Invalid plugin media URL');
+    // pluginmedia:// is only a transport wrapper; validate the embedded HTTP(S) destination too.
+    validateDownloadUrl(pluginMedia.url);
+    return value;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('Invalid download URL');
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error('Only HTTP(S) download URLs are allowed');
+  }
+
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname.endsWith('.local') ||
+    hostname.includes(':')
+  ) {
+    throw new Error('Local network download URLs are not allowed');
+  }
+
+  const ipv4 = hostname.split('.').map(Number);
+  if (
+    ipv4.length === 4 &&
+    ipv4.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)
+  ) {
+    const [a, b] = ipv4;
+    const isPrivateOrReserved =
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      a >= 224 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127);
+    if (isPrivateOrReserved) {
+      throw new Error('Local network download URLs are not allowed');
+    }
+  }
+
+  return parsed.toString();
 }
 
 function parseLyrics(lyricsText: string): Map<string, string> {
@@ -145,9 +218,10 @@ class DownloadManager {
       this.deleteCompleted(filePath)
     );
     ipcMain.handle('download:clear-completed', () => this.clearCompleted());
-    ipcMain.handle('download:get-embedded-lyrics', (_, filePath: string) =>
-      readEmbeddedLyrics(filePath)
-    );
+    ipcMain.handle('download:get-embedded-lyrics', async (_, filePath: string) => {
+      const managedFile = await this.getManagedCompletedFile(filePath);
+      return managedFile ? readEmbeddedLyrics(managedFile.filePath) : null;
+    });
     ipcMain.handle('download:provide-url', (_, payload: { taskId: string; url: string }) =>
       this.provideUrl(payload.taskId, payload.url)
     );
@@ -161,19 +235,30 @@ class DownloadManager {
     songInfo: any;
     type?: string;
   }): Promise<string> {
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      !payload.songInfo ||
+      typeof payload.songInfo !== 'object'
+    ) {
+      throw new Error('Invalid download task');
+    }
+    const url = validateDownloadUrl(payload.url);
+    const filename = sanitizeFilename(payload.filename);
+
     // 重新下载同一首歌前先清掉指向已删除文件的旧记录：
     // 手动删除文件后再下载，记录与磁盘立即一致，不会残留僵尸条目（#757）
-    if (typeof payload.songInfo?.id === 'number') {
+    if (typeof payload.songInfo.id === 'number') {
       await this.pruneMissingCompletedRecords(payload.songInfo.id);
     }
 
     const taskId = crypto.randomUUID();
     const task: DownloadTask = {
       taskId,
-      url: payload.url,
-      filename: payload.filename,
+      url,
+      filename,
       songInfo: payload.songInfo,
-      type: payload.type || 'mp3',
+      type: normalizeAudioExtension(payload.type),
       state: 'queued',
       progress: 0,
       loaded: 0,
@@ -193,6 +278,26 @@ class DownloadManager {
   private async addBatch(payload: {
     items: { url: string; filename: string; songInfo: any; type?: string }[];
   }): Promise<{ batchId: string; taskIds: string[] }> {
+    if (!payload || !Array.isArray(payload.items) || payload.items.length > 500) {
+      throw new Error('Invalid download batch');
+    }
+    const items = payload.items.map((item) => {
+      if (
+        !item ||
+        typeof item !== 'object' ||
+        !item.songInfo ||
+        typeof item.songInfo !== 'object'
+      ) {
+        throw new Error('Invalid download batch item');
+      }
+      return {
+        url: validateDownloadUrl(item.url),
+        filename: sanitizeFilename(item.filename),
+        songInfo: item.songInfo,
+        type: normalizeAudioExtension(item.type)
+      };
+    });
+
     // 批量下载同样先对齐一次记录与磁盘状态（只读一次配置，避免并发写放大）
     await this.pruneMissingCompletedRecords();
 
@@ -200,19 +305,19 @@ class DownloadManager {
     const taskIds: string[] = [];
 
     this.batchTracker.set(batchId, {
-      total: payload.items.length,
+      total: items.length,
       finished: 0,
       success: 0
     });
 
-    for (const item of payload.items) {
+    for (const item of items) {
       const taskId = crypto.randomUUID();
       const task: DownloadTask = {
         taskId,
         url: item.url,
         filename: item.filename,
         songInfo: item.songInfo,
-        type: item.type || 'mp3',
+        type: item.type,
         state: 'queued',
         progress: 0,
         loaded: 0,
@@ -382,30 +487,48 @@ class DownloadManager {
     }
   }
 
-  private async deleteCompleted(filePath: string): Promise<boolean> {
+  private async getManagedCompletedFile(
+    filePath: unknown
+  ): Promise<{ filePath: string; recordKey: string } | null> {
+    if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return null;
+
+    const resolvedPath = path.resolve(filePath);
+    const configStore = getStore();
+    const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
+    const recordKey = Object.keys(songInfos).find(
+      (storedPath) => path.resolve(storedPath) === resolvedPath
+    );
+    if (!recordKey) return null;
+
     try {
-      // 直接 unlink：既省掉一次同步 stat（下载目录可能在慢速磁盘或网络挂载盘上，
-      // 同步调用会阻塞主进程），也避免 exists 之后文件被别处删除的竞态。
-      try {
-        await fs.promises.unlink(filePath);
-      } catch (error: any) {
-        // 文件本就不存在，保留记录交给 getCompleted 清理
-        if (error?.code === 'ENOENT') {
-          return false;
-        }
-        console.error('Error deleting file:', error);
-      }
+      const stat = await fs.promises.lstat(resolvedPath);
+      if (!stat.isFile() || stat.isSymbolicLink()) return null;
+    } catch {
+      return null;
+    }
 
-      const configStore = getStore();
-      const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
-      delete songInfos[filePath];
-      configStore.set('downloadedSongs', songInfos);
+    return { filePath: resolvedPath, recordKey };
+  }
 
-      return true;
-    } catch (error) {
+  private async deleteCompleted(filePath: string): Promise<boolean> {
+    const managedFile = await this.getManagedCompletedFile(filePath);
+    if (!managedFile) return false;
+
+    try {
+      // 仅允许删除下载管理器登记的已下载文件，禁止通过 IPC unlink 任意本地路径。
+      await fs.promises.unlink(managedFile.filePath);
+    } catch (error: any) {
+      // 文件本就不存在，保留记录交给 getCompleted 清理。
+      if (error?.code === 'ENOENT') return false;
       console.error('Error deleting file:', error);
       return false;
     }
+
+    const configStore = getStore();
+    const songInfos = (configStore.get('downloadedSongs') || {}) as Record<string, any>;
+    delete songInfos[managedFile.recordKey];
+    configStore.set('downloadedSongs', songInfos);
+    return true;
   }
 
   private clearCompleted(): boolean {
@@ -420,7 +543,14 @@ class DownloadManager {
     const task = this.tasks.get(taskId);
     if (!task) return false;
 
-    task.url = url;
+    let safeUrl: string;
+    try {
+      safeUrl = validateDownloadUrl(url);
+    } catch {
+      return false;
+    }
+
+    task.url = safeUrl;
     if (task.state === 'queued' || task.state === 'paused') {
       task.state = 'queued';
       this.sendStateChange(task);
@@ -477,7 +607,7 @@ class DownloadManager {
       const sanitizedFilename = sanitizeFilename(formattedFilename);
 
       // Temp directory
-      const tempDir = path.join(os.tmpdir(), 'AlgerMusicPlayerTemp');
+      const tempDir = path.join(os.tmpdir(), 'TangTangMusicPlayerTemp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
@@ -494,10 +624,10 @@ class DownloadManager {
       }
 
       // 本地音源插件直链：pluginmedia:// 携带的请求头由主进程代理附加
-      let requestUrl = task.url;
+      let requestUrl = validateDownloadUrl(task.url);
       const pluginMedia = parsePluginMediaUrl(task.url);
       if (pluginMedia) {
-        requestUrl = pluginMedia.url;
+        requestUrl = validateDownloadUrl(pluginMedia.url);
         Object.assign(headers, pluginMedia.headers);
       }
 
@@ -511,6 +641,18 @@ class DownloadManager {
         timeout: 30000,
         signal: controller.signal,
         headers,
+        httpAgent: safeHttpAgent,
+        httpsAgent: safeHttpsAgent,
+        maxRedirects: 5,
+        beforeRedirect: (options) => {
+          const redirectHost = options.hostname || options.host;
+          if (!redirectHost) throw new Error('Invalid download redirect');
+          const redirectUrl = new URL(
+            options.path || '/',
+            `${options.protocol || 'https:'}//${redirectHost}`
+          );
+          validateDownloadUrl(redirectUrl.toString());
+        },
         validateStatus: (status) =>
           (status >= 200 && status < 300) || status === 403 || status === 410
       });
@@ -707,11 +849,24 @@ class DownloadManager {
             coverImageBuffer = Buffer.from(base64Match[1], 'base64');
           }
         } else {
+          const coverUrl = validateDownloadUrl(picUrl.replace(/^http:/, 'https:'));
           const coverResponse = await axios({
-            url: picUrl.replace('http://', 'https://'),
+            url: coverUrl,
             method: 'GET',
             responseType: 'arraybuffer',
-            timeout: 10000
+            timeout: 10000,
+            httpAgent: safeHttpAgent,
+            httpsAgent: safeHttpsAgent,
+            maxRedirects: 5,
+            beforeRedirect: (options) => {
+              const redirectHost = options.hostname || options.host;
+              if (!redirectHost) throw new Error('Invalid cover redirect');
+              const redirectUrl = new URL(
+                options.path || '/',
+                `${options.protocol || 'https:'}//${redirectHost}`
+              );
+              validateDownloadUrl(redirectUrl.toString());
+            }
           });
 
           const originalCoverBuffer = Buffer.from(coverResponse.data);
@@ -1117,28 +1272,32 @@ class DownloadManager {
   }
 
   private cleanOrphanedTempFiles(): void {
-    try {
-      const tempDir = path.join(os.tmpdir(), 'AlgerMusicPlayerTemp');
-      if (!fs.existsSync(tempDir)) return;
+    const knownTempPaths = new Set(
+      [...this.tasks.values()].map((task) => task.tempFilePath).filter(Boolean)
+    );
+    // Keep the legacy folder in the cleanup set so persisted paused tasks from
+    // AlgerMusicPlayer can resume from their existing partial download.
+    const tempDirs = ['TangTangMusicPlayerTemp', 'AlgerMusicPlayerTemp'].map((name) =>
+      path.join(os.tmpdir(), name)
+    );
 
-      const knownTempPaths = new Set(
-        [...this.tasks.values()].map((t) => t.tempFilePath).filter(Boolean)
-      );
-
-      const files = fs.readdirSync(tempDir);
-      for (const file of files) {
-        if (!file.endsWith('.tmp')) continue;
-        const fullPath = path.join(tempDir, file);
-        if (!knownTempPaths.has(fullPath)) {
-          try {
-            fs.unlinkSync(fullPath);
-          } catch {
-            // ignore
+    for (const tempDir of tempDirs) {
+      try {
+        if (!fs.existsSync(tempDir)) continue;
+        for (const file of fs.readdirSync(tempDir)) {
+          if (!file.endsWith('.tmp')) continue;
+          const fullPath = path.join(tempDir, file);
+          if (!knownTempPaths.has(fullPath)) {
+            try {
+              fs.unlinkSync(fullPath);
+            } catch {
+              // Best-effort cleanup; a locked temp file is retried on next launch.
+            }
           }
         }
+      } catch {
+        // A missing or temporarily inaccessible temp directory must not block startup.
       }
-    } catch {
-      // Temp dir may not exist
     }
   }
 }

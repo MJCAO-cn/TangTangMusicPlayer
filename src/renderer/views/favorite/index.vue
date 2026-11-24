@@ -179,7 +179,6 @@ const favoriteList = computed(() => playerStore.favoriteList);
 const favoriteSongs = ref<SongResult[]>([]);
 const loading = ref(false);
 const noMore = ref(false);
-const scrollbarRef = ref();
 
 // 手工虚拟化
 const {

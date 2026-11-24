@@ -36,13 +36,12 @@ export function useSongItem(props: { item: SongResult; canRemove?: boolean }) {
   // 收藏与不喜欢状态
   const isFavorite = computed(() => {
     const numericId =
-      typeof props.item.id === 'string' ? parseInt(props.item.id, 10) : props.item.id;
+      Number(props.item.id);
     return playerStore.favoriteList.includes(numericId);
   });
 
   const isDislike = computed(() => {
-    const numericId =
-      typeof props.item.id === 'string' ? parseInt(props.item.id, 10) : props.item.id;
+    const numericId = Number(props.item.id);
     return playerStore.dislikeList.includes(numericId);
   });
 
@@ -77,14 +76,17 @@ export function useSongItem(props: { item: SongResult; canRemove?: boolean }) {
   // 切换收藏状态
   const toggleFavorite = async (e: Event) => {
     e && e.stopPropagation();
-    const numericId =
-      typeof props.item.id === 'string' ? parseInt(props.item.id, 10) : props.item.id;
+    const favoriteId = props.item.id;
+    if (typeof favoriteId !== 'number' && typeof favoriteId !== 'string') return;
 
     if (isFavorite.value) {
-      playerStore.removeFromFavorite(numericId);
-    } else {
-      playerStore.addToFavorite(numericId);
+      playerStore.removeFromFavorite(favoriteId);
+      return;
     }
+
+    // 先完成收藏；下载 composable 会对不支持的 ID 给出明确提示，不回滚收藏。
+    playerStore.addToFavorite(favoriteId);
+    await downloadMusic(props.item);
   };
 
   // 判断当前歌曲是否为每日推荐歌曲

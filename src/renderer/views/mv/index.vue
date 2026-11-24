@@ -124,7 +124,6 @@ const currentIndex = ref(0);
 const offset = ref(0);
 const limit = ref(40);
 const hasMore = ref(true);
-const pageRef = ref();
 
 const categories = computed(() => [
   { label: t('comp.pages.mv.area.all'), value: '全部' },

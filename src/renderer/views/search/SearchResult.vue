@@ -130,10 +130,12 @@
                   v-for="(item, index) in searchDetail?.songs"
                   :key="item.id"
                   class="mb-2 animate-item"
-                  :style="{ animationDelay: calculateAnimationDelay(index % 30, 0.04) }"
+                  :style="{
+                    animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
+                  }"
                 >
                   <song-item
-                    :index="index"
+                    :index="Number(index)"
                     :item="formatSong(item)"
                     :compact="isCompactLayout"
                     :selectable="isSelecting"
@@ -156,7 +158,9 @@
                     v-for="(item, index) in searchDetail?.mvs"
                     :key="item.id"
                     class="animate-item"
-                    :style="{ animationDelay: calculateAnimationDelay(index % 30, 0.04) }"
+                    :style="{
+                      animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
+                    }"
                   >
                     <search-item :item="item" />
                   </div>
@@ -179,7 +183,9 @@
                         v-for="(item, index) in list"
                         :key="item.id"
                         class="animate-item"
-                        :style="{ animationDelay: calculateAnimationDelay(index % 30, 0.04) }"
+                        :style="{
+                          animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
+                        }"
                       >
                         <search-item :item="item" />
                       </div>
@@ -191,7 +197,9 @@
                         v-for="(item, index) in searchDetail.djRadios"
                         :key="item.id"
                         class="animate-item"
-                        :style="{ animationDelay: calculateAnimationDelay(index % 30, 0.04) }"
+                        :style="{
+                          animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
+                        }"
                       >
                         <search-item :item="item" />
                       </div>

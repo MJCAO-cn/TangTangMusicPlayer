@@ -8,16 +8,19 @@ import { getSongUrl } from '@/store/modules/player';
 import type { SongResult } from '@/types/music';
 import { isElectron } from '@/utils';
 
-import type { DownloadSongInfo } from '../../shared/download';
+import { DOWNLOAD_TASK_STATE, type DownloadSongInfo } from '../../shared/download';
 
 const ipcRenderer = isElectron ? window.electron.ipcRenderer : null;
+
+// 跨 SongItem composable 实例共享，避免快速连点或列表重复渲染导致同曲并发入队。
+const downloadingSongIds = new Set<string>();
 
 /**
  * Map a SongResult to the minimal DownloadSongInfo shape required by the download store.
  */
 function toDownloadSongInfo(song: SongResult): DownloadSongInfo {
   return {
-    id: song.id as number,
+    id: Number(song.id),
     name: song.name,
     picUrl: song.picUrl ?? song.al?.picUrl ?? '',
     ar: (song.ar || song.song?.artists || []).map((a: { name: string }) => ({ name: a.name })),
@@ -50,15 +53,25 @@ export const useDownload = () => {
    * Resolves the URL in the renderer then delegates queuing to the download store.
    */
   const downloadMusic = async (song: SongResult) => {
-    if (isDownloading.value) {
+    // 浏览器版不具备本地文件系统下载能力；本地音乐本身已在磁盘上，无需再次下载。
+    if (!isElectron) return;
+
+    const songId = Number(song.id);
+    if (!Number.isSafeInteger(songId) || songId <= 0) {
+      message.error(t('songItem.message.getUrlFailed'));
+      return;
+    }
+    const downloadKey = `${song.source ?? song.type ?? 'default'}:${songId}`;
+    if (isDownloading.value || downloadingSongIds.has(downloadKey)) {
       message.warning(t('songItem.message.downloading'));
       return;
     }
 
     try {
       isDownloading.value = true;
+      downloadingSongIds.add(downloadKey);
 
-      const musicUrl = (await getSongUrl(song.id as number, song, true)) as any;
+      const musicUrl = (await getSongUrl(songId, song, true)) as any;
       const url = extractDownloadUrl(musicUrl);
       // 拿不到可下载的直链时报错，不能提示"已加入下载队列"：
       // 否则任务入队后立刻在主进程失败，用户看到的是"有提示、无文件、无进度"（#757）
@@ -66,14 +79,27 @@ export const useDownload = () => {
         throw new Error(t('songItem.message.getUrlFailed'));
       }
       const type = typeof musicUrl === 'string' ? '' : (musicUrl.type ?? '');
-      const songInfo = toDownloadSongInfo(song);
+      const alreadyQueued = [...downloadStore.tasks.values()].some(
+        (task) =>
+          task.songInfo.id === songId &&
+          task.type === type &&
+          (task.state === DOWNLOAD_TASK_STATE.queued ||
+            task.state === DOWNLOAD_TASK_STATE.downloading ||
+            task.state === DOWNLOAD_TASK_STATE.paused)
+      );
+      if (alreadyQueued) {
+        message.info(t('songItem.message.downloading'));
+        return;
+      }
 
+      const songInfo = toDownloadSongInfo(song);
       await downloadStore.addDownload(songInfo, url, type);
       message.success(t('songItem.message.downloadQueued'));
     } catch (error: any) {
       console.error('Download error:', error);
       message.error(error.message || t('songItem.message.downloadFailed'));
     } finally {
+      downloadingSongIds.delete(downloadKey);
       isDownloading.value = false;
     }
   };

@@ -2,11 +2,7 @@
   <div class="flex items-center gap-2 pb-4 pr-4 pl-1">
     <!-- ── LEFT: Tabs（搜索展开时隐藏）─────────────── -->
     <transition name="tab-slide">
-      <div
-        v-if="!isSearchExpanded && !showBackButton"
-        class="tabs-track flex-shrink-0"
-        ref="tabsTrackRef"
-      >
+      <div v-if="!isSearchExpanded && !showBackButton" class="tabs-track flex-shrink-0">
         <div class="tab-slider-bg" :style="sliderStyle" />
         <button
           v-for="(tab, i) in tabs"
@@ -131,16 +127,28 @@
             v-if="userStore.user"
             circle
             :size="26"
-            :src="getImgUrl(userStore.user.avatarUrl)"
+            :src="userStore.user.avatarUrl ? getImgUrl(userStore.user.avatarUrl) : defaultAvatar"
             class="cursor-pointer"
             @click="selectItem('user')"
           />
-          <span v-else class="login-label" @click="toLogin">{{ t('comp.searchBar.login') }}</span>
+          <n-avatar
+            v-else
+            circle
+            :size="26"
+            :src="defaultAvatar"
+            :title="t('comp.searchBar.login')"
+            class="cursor-pointer"
+            @click="toLogin"
+          />
         </div>
       </template>
       <div class="user-menu">
         <div v-if="userStore.user" class="user-menu-top" @click="selectItem('user')">
-          <n-avatar circle :size="30" :src="getImgUrl(userStore.user?.avatarUrl)" />
+          <n-avatar
+            circle
+            :size="30"
+            :src="userStore.user?.avatarUrl ? getImgUrl(userStore.user.avatarUrl) : defaultAvatar"
+          />
           <span class="user-name">{{ userStore.user?.nickname }}</span>
         </div>
         <div v-if="userStore.user" class="menu-sep" />
@@ -199,12 +207,10 @@
       </div>
     </n-popover>
 
-    <!-- GitHub -->
-    <coffee :alipay-q-r="alipay" :wechat-q-r="wechat">
-      <button class="action-btn" @click="toGithub">
-        <i class="ri-github-fill" />
-      </button>
-    </coffee>
+    <!-- GitHub project -->
+    <button class="action-btn" aria-label="GitHub" @click="toGithub">
+      <i class="ri-github-fill" />
+    </button>
   </div>
 </template>
 
@@ -217,9 +223,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getSearchKeyword } from '@/api/home';
 import { getUserDetail } from '@/api/login';
 import { getSearchSuggestions } from '@/api/search';
-import alipay from '@/assets/alipay.png';
-import wechat from '@/assets/wechat.png';
-import Coffee from '@/components/Coffee.vue';
+import defaultAvatar from '@/assets/tangtang-avatar.svg';
 import { SEARCH_TYPES, USER_SET_OPTIONS } from '@/const/bar-const';
 import { useZoom } from '@/hooks/useZoom';
 import { useDownloadStore } from '@/store/modules/download';
@@ -299,7 +303,6 @@ const tabs = computed(() => {
 const isTabActive = (path: string) => route.path === path;
 
 // Sliding pill
-const tabsTrackRef = ref<HTMLElement | null>(null);
 const tabElsRef = ref<HTMLElement[]>([]);
 const setTabRef = (el: HTMLElement, i: number) => {
   if (el) tabElsRef.value[i] = el;
@@ -458,9 +461,15 @@ watchEffect(() => {
 
 const restartApp = () => window.electron.ipcRenderer.send('restart');
 const toLogin = () => router.push('/user');
-const toGithub = () => window.open('http://donate.alger.fun/download', '_blank');
+const toGithub = () => {
+  window.open('https://github.com/MJCAO-cn/TangTangMusicPlayer', '_blank', 'noopener,noreferrer');
+};
 const toGithubRelease = () => {
-  window.location.href = 'https://donate.alger.fun/download';
+  window.open(
+    'https://github.com/MJCAO-cn/TangTangMusicPlayer/releases/latest',
+    '_blank',
+    'noopener,noreferrer'
+  );
 };
 
 const isDark = computed({
@@ -755,18 +764,8 @@ onMounted(() => {
   border-color: #374151;
 }
 .user-btn:hover {
-  border-color: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.12);
-}
-
-.login-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  padding: 0 8px;
-}
-.dark .login-label {
-  color: #9ca3af;
+  border-color: #ec5a9d;
+  box-shadow: 0 0 0 2px rgba(236, 90, 157, 0.12);
 }
 
 /* ── User menu ───────────────────────────────────────── */

@@ -621,7 +621,6 @@ const { t } = useI18n();
 const playerStore = usePlayerStore();
 const downloadStore = useDownloadStore();
 const message = useMessage();
-const scrollbarRef = ref();
 
 const completedList = computed(() => downloadStore.completedList);
 
