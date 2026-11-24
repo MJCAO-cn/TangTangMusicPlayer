@@ -83,8 +83,6 @@ const { isPlaying: play, playMusicEvent, handleNext, handlePrev } = usePlaybackC
 const background = ref('#000');
 
 // 全屏播放器
-const MusicFullRef = ref<any>(null);
-
 const setMusicFull = () => {
   playerStore.setMusicFull(!playerStore.musicFull);
   if (playerStore.musicFull) {
