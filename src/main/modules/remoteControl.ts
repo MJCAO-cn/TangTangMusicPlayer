@@ -25,7 +25,7 @@ function isValidIpAddress(value: string): boolean {
   const ipv4 = value.split('.');
   if (
     ipv4.length === 4 &&
-    ipv4.every((part) => /^\\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255)
+    ipv4.every((part) => /^\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255)
   ) {
     return true;
   }
