@@ -20,7 +20,7 @@ export const initPluginMediaProxy = (): void => {
     const range = request.headers.get('range');
     if (range) headers['Range'] = range;
 
-    let currentUrl: string;
+    let currentUrl = target.url;
     try {
       currentUrl = validatePublicHttpUrl(target.url);
       let upstream: Response | null = null;
