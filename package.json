@@ -247,6 +247,8 @@
     "pac-proxy-agent": "^9.1.1",
     "proxy-agent": "^8.0.3",
     "file-type": "$file-type",
-    "music-metadata": "$music-metadata"
+    "music-metadata": "$music-metadata",
+    "minimatch": "^11.0.1",
+    "xml2js": "^0.6.2"
   }
 }
