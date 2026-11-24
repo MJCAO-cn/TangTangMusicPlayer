@@ -18,13 +18,13 @@ import type {
 } from '../../shared/download';
 import { parsePluginMediaUrl } from '../../shared/musicSourcePlugin';
 import { getStore } from './config';
-import { safeHttpAgent, safeHttpsAgent } from './safeNetwork';
 import {
   buildMp3TagPatch,
   getCoverMime,
   getDownloadArtistNames,
   readEmbeddedLyrics
 } from './downloadMetadata';
+import { safeHttpAgent, safeHttpsAgent } from './safeNetwork';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -630,7 +630,6 @@ class DownloadManager {
         requestUrl = validateDownloadUrl(pluginMedia.url);
         Object.assign(headers, pluginMedia.headers);
       }
-      const pluginMediaHost = pluginMedia ? new URL(pluginMedia.url).host : null;
 
       // Start download
       // 注意：axios 默认只接受 2xx，403/410 会直接抛错进入 catch，导致下方"直链过期重新解析"
