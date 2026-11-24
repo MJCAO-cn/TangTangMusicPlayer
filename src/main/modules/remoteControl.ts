@@ -1,5 +1,5 @@
-import cors from 'cors';
 import { ipcMain } from 'electron';
+import { isIP } from 'node:net';
 import express from 'express';
 import fs from 'fs';
 import os from 'os';
@@ -18,8 +18,36 @@ export interface RemoteControlConfig {
 export const defaultRemoteControlConfig: RemoteControlConfig = {
   enabled: false,
   port: 31888,
+  // 未显式配置 IP 白名单时，只允许本机回环访问。
   allowedIps: []
 };
+
+function normalizeRemoteControlConfig(value: Partial<RemoteControlConfig> | null | undefined): RemoteControlConfig {
+  const port = Number(value?.port);
+  const allowedIps = Array.isArray(value?.allowedIps)
+    ? [...new Set(value.allowedIps
+        .filter((ip): ip is string => typeof ip === 'string')
+        .map((ip) => ip.trim().replace(/^::ffff:/i, ''))
+        .filter((ip) => isIP(ip) !== 0))]
+    : [];
+
+  return {
+    enabled: value?.enabled === true,
+    port: Number.isInteger(port) && port >= 1024 && port <= 65535
+      ? port
+      : defaultRemoteControlConfig.port,
+    allowedIps
+  };
+}
+
+function normalizeClientIp(value: string): string {
+  return value.replace(/^::ffff:/i, '').split('%')[0];
+}
+
+function isLoopbackIp(value: string): boolean {
+  const ip = normalizeClientIp(value);
+  return ip === '127.0.0.1' || ip === '::1' || ip.startsWith('127.');
+}
 
 let app: express.Application | null = null;
 let server: any = null;
@@ -50,13 +78,10 @@ function getLocalIpAddresses(): string[] {
 export function initializeRemoteControl(mainWindow: Electron.BrowserWindow) {
   mainWindowRef = mainWindow;
   const store = getStore() as any;
-  let config = store.get('remoteControl') as RemoteControlConfig;
-
-  // 如果配置不存在，使用默认配置
-  if (!config) {
-    config = defaultRemoteControlConfig;
-    store.set('remoteControl', config);
-  }
+  const config = normalizeRemoteControlConfig(
+    store.get('remoteControl') as Partial<RemoteControlConfig> | undefined
+  );
+  store.set('remoteControl', config);
 
   // 监听当前歌曲变化
   ipcMain.on('update-current-song', (_, song: any) => {
@@ -74,10 +99,11 @@ export function initializeRemoteControl(mainWindow: Electron.BrowserWindow) {
       stopServer();
     }
 
-    store.set('remoteControl', newConfig);
+    const safeConfig = normalizeRemoteControlConfig(newConfig);
+    store.set('remoteControl', safeConfig);
 
-    if (newConfig.enabled) {
-      startServer(newConfig);
+    if (safeConfig.enabled) {
+      startServer(safeConfig);
     }
   });
 
@@ -105,18 +131,24 @@ function startServer(config: RemoteControlConfig) {
     return;
   }
 
+  const safeConfig = normalizeRemoteControlConfig(config);
+  const allowedIps = new Set(safeConfig.allowedIps);
+  const isRemoteAccessExplicitlyConfigured = allowedIps.size > 0;
+
   app = express();
 
-  // 跨域配置
-  app.use(cors());
-  app.use(express.json());
+  // 远程控制页面和 API 同源，不开放通配符 CORS；限制 JSON 请求体大小。
+  app.use(express.json({ limit: '16kb' }));
 
-  // IP 过滤中间件
+  // 默认仅允许本机回环访问。只有用户明确填写有效 IP 白名单时才开放局域网监听。
   app.use((req, res, next) => {
-    const clientIp = req.ip || req.socket.remoteAddress || '';
-    const cleanIp = clientIp.replace(/^::ffff:/, ''); // 移除IPv6前缀
-    console.log('config', config);
-    if (config.allowedIps.length === 0 || config.allowedIps.includes(cleanIp)) {
+    const remoteAddress = req.socket.remoteAddress || req.ip || '';
+    const clientIp = normalizeClientIp(remoteAddress);
+    const allowed = isRemoteAccessExplicitlyConfigured
+      ? allowedIps.has(clientIp)
+      : isLoopbackIp(clientIp);
+
+    if (allowed) {
       next();
     } else {
       res.status(403).json({ error: '未授权的IP地址' });
@@ -128,8 +160,9 @@ function startServer(config: RemoteControlConfig) {
 
   // 启动服务器
   try {
-    server = app.listen(config.port, () => {
-      console.log(`远程控制服务已启动，监听端口: ${config.port}`);
+    const bindHost = isRemoteAccessExplicitlyConfigured ? '0.0.0.0' : '127.0.0.1';
+    server = app.listen(safeConfig.port, bindHost, () => {
+      console.log(`远程控制服务已启动: http://${bindHost}:${safeConfig.port}`);
     });
   } catch (error) {
     console.error('启动远程控制服务失败:', error);
