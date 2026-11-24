@@ -5,7 +5,7 @@
       <div
         v-if="!isSearchExpanded && !showBackButton"
         class="tabs-track flex-shrink-0"
-        ref="tabsTrackRef"
+        
       >
         <div class="tab-slider-bg" :style="sliderStyle" />
         <button
