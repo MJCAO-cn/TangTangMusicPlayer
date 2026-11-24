@@ -148,7 +148,11 @@
       </template>
       <div class="user-menu">
         <div v-if="userStore.user" class="user-menu-top" @click="selectItem('user')">
-          <n-avatar circle :size="30" :src="userStore.user?.avatarUrl ? getImgUrl(userStore.user.avatarUrl) : defaultAvatar" />
+          <n-avatar
+            circle
+            :size="30"
+            :src="userStore.user?.avatarUrl ? getImgUrl(userStore.user.avatarUrl) : defaultAvatar"
+          />
           <span class="user-name">{{ userStore.user?.nickname }}</span>
         </div>
         <div v-if="userStore.user" class="menu-sep" />
