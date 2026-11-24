@@ -1,5 +1,4 @@
 import { ipcMain } from 'electron';
-import { isIP } from 'node:net';
 import express from 'express';
 import fs from 'fs';
 import os from 'os';
@@ -22,13 +21,33 @@ export const defaultRemoteControlConfig: RemoteControlConfig = {
   allowedIps: []
 };
 
+function isValidIpAddress(value: string): boolean {
+  const ipv4 = value.split('.');
+  if (
+    ipv4.length === 4 &&
+    ipv4.every((part) => /^\\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255)
+  ) {
+    return true;
+  }
+
+  if (value.includes(':')) {
+    try {
+      return new URL(`http://[${value}]/`).hostname.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
 function normalizeRemoteControlConfig(value: Partial<RemoteControlConfig> | null | undefined): RemoteControlConfig {
   const port = Number(value?.port);
   const allowedIps = Array.isArray(value?.allowedIps)
     ? [...new Set(value.allowedIps
         .filter((ip): ip is string => typeof ip === 'string')
         .map((ip) => ip.trim().replace(/^::ffff:/i, ''))
-        .filter((ip) => isIP(ip) !== 0))]
+        .filter(isValidIpAddress))]
     : [];
 
   return {
