@@ -51,6 +51,11 @@
 
 - 本地音乐 API 仅监听回环地址，防止外部访问
 - LX Music 脚本执行隔离到 Worker 沙箱
+- 渲染进程启用 Chromium webSecurity 与 sandbox，并将通用 IPC 调用限制为明确白名单
+- 下载、音源脚本和 LX Music HTTP 请求增加公网地址校验，阻止访问本机、局域网及云元数据地址
+- 插件媒体代理校验重定向目标与请求头，远程控制默认仅监听回环地址
+- 本地媒体协议仅允许音频和图片扩展名，配置 IPC 仅允许读取/写入已知设置键
+- 升级 Electron Builder，并覆盖修复 minimatch、xml2js 已知安全公告的依赖版本
 
 ### 🎨 优化
 
