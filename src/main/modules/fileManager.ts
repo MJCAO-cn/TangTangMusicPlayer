@@ -6,6 +6,7 @@ import * as path from 'path';
 import { Readable } from 'stream';
 
 import { getStore } from './config';
+import { safeHttpAgent, safeHttpsAgent, validatePublicHttpUrl } from './safeNetwork';
 
 // 创建一个store实例用于存储音频缓存
 const audioCacheStore = new Store({
@@ -351,12 +352,9 @@ export function initializeFileManager() {
     async (_, sourceUrl: string): Promise<{ name: string; content: string; url: string }> => {
       let url: URL;
       try {
-        url = new URL(sourceUrl);
+        url = new URL(validatePublicHttpUrl(sourceUrl));
       } catch {
-        throw new Error('无效的音源脚本 URL。');
-      }
-      if (!/^https?:$/.test(url.protocol)) {
-        throw new Error('音源脚本 URL 只支持 HTTP 或 HTTPS。');
+        throw new Error('无效的公开 HTTP(S) 音源脚本 URL。');
       }
 
       const controller = new AbortController();
@@ -364,8 +362,12 @@ export function initializeFileManager() {
       try {
         const response = await fetch(url.toString(), {
           method: 'GET',
-          headers: { 'User-Agent': 'AlgerMusicPlayer/5.1' },
-          signal: controller.signal
+          headers: { 'User-Agent': 'TangTangMusicPlayer/1.0' },
+          signal: controller.signal,
+          size: 2 * 1024 * 1024,
+          redirect: 'follow',
+          agent: (parsedUrl) =>
+            parsedUrl.protocol === 'http:' ? safeHttpAgent : safeHttpsAgent
         });
         if (!response.ok) {
           throw new Error(`HTTP ${response.status} ${response.statusText}`);
@@ -389,7 +391,7 @@ export function initializeFileManager() {
           url: url.toString()
         };
       } catch (error: any) {
-        console.error('下载音乐音源脚本失败:', error);
+        console.error('下载音乐音源脚本失败:', url.hostname, error);
         throw new Error(`脚本下载失败: ${error.message}`);
       } finally {
         clearTimeout(timeoutId);
