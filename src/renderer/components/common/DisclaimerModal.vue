@@ -5,34 +5,46 @@
         v-if="showDisclaimer"
         class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-md"
       >
-        <section class="mx-4 w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-gray-900">
+        <section
+          class="mx-4 w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-gray-900"
+        >
           <div class="h-2 bg-gradient-to-r from-rose-400 via-pink-500 to-violet-500" />
           <h2 class="mt-10 px-6 text-center text-2xl font-bold text-gray-900 dark:text-white">
             {{ t('comp.disclaimer.title') }}
           </h2>
           <div class="px-6 py-6">
             <div class="space-y-4 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-              <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+              <div
+                class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
+              >
                 <div class="flex items-start gap-3">
                   <i class="ri-alert-line mt-0.5 flex-shrink-0 text-xl text-amber-500" />
-                  <p class="text-amber-700 dark:text-amber-300">{{ t('comp.disclaimer.warning') }}</p>
+                  <p class="text-amber-700 dark:text-amber-300">
+                    {{ t('comp.disclaimer.warning') }}
+                  </p>
                 </div>
               </div>
               <div class="space-y-3">
                 <div class="flex items-start gap-3">
-                  <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <span
+                    class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30"
+                  >
                     <i class="ri-book-2-line text-sm text-blue-500" />
                   </span>
                   <p>{{ t('comp.disclaimer.item1') }}</p>
                 </div>
                 <div class="flex items-start gap-3">
-                  <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                  <span
+                    class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+                  >
                     <i class="ri-time-line text-sm text-green-500" />
                   </span>
                   <p>{{ t('comp.disclaimer.item2') }}</p>
                 </div>
                 <div class="flex items-start gap-3">
-                  <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
+                  <span
+                    class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30"
+                  >
                     <i class="ri-shield-check-line text-sm text-violet-500" />
                   </span>
                   <p>{{ t('comp.disclaimer.item3') }}</p>
