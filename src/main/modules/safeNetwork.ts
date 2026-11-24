@@ -94,12 +94,19 @@ export async function assertPublicHostname(hostname: string): Promise<void> {
     }
   );
 
-  if (addresses.length === 0 || addresses.some((entry) => !isPublicNetworkAddress(entry.address))) {
+  if (
+    addresses.length === 0 ||
+    addresses.some((entry) => !isPublicNetworkAddress(entry.address))
+  ) {
     throw new Error('Host resolves to a non-public network address');
   }
 }
 
-function publicOnlyLookup(hostname: string, options: any, callback: (...args: any[]) => void): void {
+function publicOnlyLookup(
+  hostname: string,
+  options: any,
+  callback: (...args: any[]) => void
+): void {
   const requestedFamily = typeof options === 'number' ? options : options?.family || 0;
 
   lookup(hostname, { all: true, verbatim: true }, (error, addresses) => {
@@ -118,7 +125,9 @@ function publicOnlyLookup(hostname: string, options: any, callback: (...args: an
       candidates.length === 0 ||
       candidates.some((entry) => !isPublicNetworkAddress(entry.address))
     ) {
-      const denied = new Error('Download host resolves to a non-public network address') as NodeJS.ErrnoException;
+      const denied = new Error(
+        'Download host resolves to a non-public network address'
+      ) as NodeJS.ErrnoException;
       denied.code = 'EACCES';
       callback(denied);
       return;
