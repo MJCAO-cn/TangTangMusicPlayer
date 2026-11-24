@@ -159,8 +159,8 @@
                     :key="item.id"
                     class="animate-item"
                     :style="{
-                          animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
-                        }"
+                      animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
+                    }"
                   >
                     <search-item :item="item" />
                   </div>
