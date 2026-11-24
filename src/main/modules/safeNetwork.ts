@@ -47,6 +47,58 @@ export function isPublicNetworkAddress(address: string): boolean {
   return false;
 }
 
+export function validatePublicHttpUrl(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 8192) {
+    throw new Error('Invalid network URL');
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('Invalid network URL');
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error('Only public HTTP(S) URLs are allowed');
+  }
+
+  const hostname = parsed.hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+  if (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname.endsWith('.local') ||
+    (isIP(hostname) !== 0 && !isPublicNetworkAddress(hostname))
+  ) {
+    throw new Error('Local network URLs are not allowed');
+  }
+
+  return parsed.toString();
+}
+
+export async function assertPublicHostname(hostname: string): Promise<void> {
+  const normalized = hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+  if (isIP(normalized) !== 0) {
+    if (!isPublicNetworkAddress(normalized)) {
+      throw new Error('Local network hosts are not allowed');
+    }
+    return;
+  }
+
+  const addresses = await new Promise<Array<{ address: string; family: number }>>(
+    (resolve, reject) => {
+      lookup(normalized, { all: true, verbatim: true }, (error, results) => {
+        if (error) reject(error);
+        else resolve(results);
+      });
+    }
+  );
+
+  if (addresses.length === 0 || addresses.some((entry) => !isPublicNetworkAddress(entry.address))) {
+    throw new Error('Host resolves to a non-public network address');
+  }
+}
+
 function publicOnlyLookup(hostname: string, options: any, callback: (...args: any[]) => void): void {
   const requestedFamily = typeof options === 'number' ? options : options?.family || 0;
 
