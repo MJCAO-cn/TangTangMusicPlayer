@@ -75,6 +75,7 @@ await Promise.all([
   write('resources/favicon.ico', ico),
   write('resources/icon.icns', icns),
   write('resources/icon.png', pngs.get(512)),
+  write('src/renderer/assets/logo.png', pngs.get(512)),
   write('resources/icon-192.png', pngs.get(192)),
   write('resources/icon-512.png', pngs.get(512)),
   write('resources/icon-512-maskable.png', pngs.get(512)),
