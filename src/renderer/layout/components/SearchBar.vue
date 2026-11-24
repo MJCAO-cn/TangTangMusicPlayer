@@ -307,7 +307,6 @@ const tabs = computed(() => {
 const isTabActive = (path: string) => route.path === path;
 
 // Sliding pill
-const tabsTrackRef = ref<HTMLElement | null>(null);
 const tabElsRef = ref<HTMLElement[]>([]);
 const setTabRef = (el: HTMLElement, i: number) => {
   if (el) tabElsRef.value[i] = el;
