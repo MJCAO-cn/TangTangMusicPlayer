@@ -32,7 +32,6 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       supportFetchAPI: true,
       stream: true,
-      bypassCSP: true,
       corsEnabled: true
     }
   },
@@ -44,7 +43,6 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       supportFetchAPI: true,
       stream: true,
-      bypassCSP: true,
       corsEnabled: true
     }
   }
@@ -200,17 +198,16 @@ if (!isSingleInstance) {
     // 媒体设备权限：应用没有任何录音功能，麦克风/摄像头采集一律拒绝，
     // 防止依赖库静默调用 getUserMedia 触发系统麦克风授权弹窗（#147/#246/#440/#639 防御性加固）。
     // 输出设备切换走 speaker-selection / enumerateDevices，不受影响
-    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-      if (permission === ('media' as any) || permission === ('audioCapture' as any)) {
-        callback(false);
-        return;
-      }
-      callback(true);
+    session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+      // 播放器不需要网页权限请求；系统通知由主进程 Notification API 管理。
+      // 默认拒绝可避免远程页面/注入脚本申请摄像头、麦克风、定位等权限。
+      callback(false);
     });
 
     // 保持放行：enumerateDevices 依赖它返回真实设备名（不访问麦克风硬件、不触发系统授权）
-    session.defaultSession.setPermissionCheckHandler(() => {
-      return true;
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+      // 仅允许枚举音频设备名称；媒体采集请求仍由上面的 request handler 拒绝。
+      return permission === 'media';
     });
 
     // 重新初始化配置管理以获取完整的配置存储
