@@ -41,7 +41,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 // 3D视差效果相关
 const coverContainer = ref<HTMLElement | null>(null);
-const coverImage = ref<HTMLElement | null>(null);
 const mouseX = ref(0.5);
 const mouseY = ref(0.5);
 const isHovering = ref(false);
