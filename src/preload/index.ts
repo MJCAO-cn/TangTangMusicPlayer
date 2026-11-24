@@ -280,7 +280,9 @@ const EVENT_CHANNELS = new Set([
   'receive-lyric',
   'navigate',
   'send-cookies',
-  'shortcuts-updated'
+  'shortcuts-updated',
+  'gpu-acceleration-updated',
+  'gpu-acceleration-update-error'
 ]);
 
 const assertAllowedChannel = (channel: string, allowed: Set<string>, operation: string): void => {
