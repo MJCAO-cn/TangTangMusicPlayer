@@ -63,7 +63,7 @@ export function validatePublicHttpUrl(value: unknown): string {
     throw new Error('Only public HTTP(S) URLs are allowed');
   }
 
-  const hostname = parsed.hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (
     hostname === 'localhost' ||
     hostname.endsWith('.localhost') ||
@@ -77,7 +77,7 @@ export function validatePublicHttpUrl(value: unknown): string {
 }
 
 export async function assertPublicHostname(hostname: string): Promise<void> {
-  const normalized = hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (isIP(normalized) !== 0) {
     if (!isPublicNetworkAddress(normalized)) {
       throw new Error('Local network hosts are not allowed');
