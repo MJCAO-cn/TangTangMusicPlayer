@@ -8,7 +8,7 @@ import { getSongUrl } from '@/store/modules/player';
 import type { SongResult } from '@/types/music';
 import { isElectron } from '@/utils';
 
-import type { DownloadSongInfo } from '../../shared/download';
+import { DOWNLOAD_TASK_STATE, type DownloadSongInfo } from '../../shared/download';
 
 const ipcRenderer = isElectron ? window.electron.ipcRenderer : null;
 
@@ -53,6 +53,9 @@ export const useDownload = () => {
    * Resolves the URL in the renderer then delegates queuing to the download store.
    */
   const downloadMusic = async (song: SongResult) => {
+    // 浏览器版不具备本地文件系统下载能力；本地音乐本身已在磁盘上，无需再次下载。
+    if (!isElectron || song.source === 'local' || song.type === 'local') return;
+
     const songId = Number(song.id);
     if (!Number.isSafeInteger(songId) || songId <= 0) {
       message.error(t('songItem.message.getUrlFailed'));
@@ -76,8 +79,22 @@ export const useDownload = () => {
         throw new Error(t('songItem.message.getUrlFailed'));
       }
       const type = typeof musicUrl === 'string' ? '' : (musicUrl.type ?? '');
-      const songInfo = toDownloadSongInfo(song);
+      const alreadyQueued = [...downloadStore.tasks.values()].some(
+        (task) =>
+          task.songInfo.id === songId &&
+          task.type === type &&
+          [
+            DOWNLOAD_TASK_STATE.queued,
+            DOWNLOAD_TASK_STATE.downloading,
+            DOWNLOAD_TASK_STATE.paused
+          ].includes(task.state)
+      );
+      if (alreadyQueued) {
+        message.info(t('songItem.message.downloading'));
+        return;
+      }
 
+      const songInfo = toDownloadSongInfo(song);
       await downloadStore.addDownload(songInfo, url, type);
       message.success(t('songItem.message.downloadQueued'));
     } catch (error: any) {
