@@ -1,4 +1,3 @@
-import { electronAPI } from '@electron-toolkit/preload';
 import type { IpcRendererEvent } from 'electron';
 import { contextBridge, ipcRenderer } from 'electron';
 
@@ -147,26 +146,202 @@ const api = {
     ipcRenderer.invoke('webdav:download') as Promise<WebdavResult<string | null>>
 };
 
-// 创建带类型的ipcRenderer对象，暴露给渲染进程
-const ipc = {
-  // 发送消息到主进程（无返回值）
-  send: (channel: string, ...args: any[]) => {
-    ipcRenderer.send(channel, ...args);
+// Explicit IPC channel allowlists: renderer code cannot invoke arbitrary main-process handlers.
+const SEND_CHANNELS = new Set([
+  'change-language',
+  'update-play-state',
+  'update-current-song',
+  'restart',
+  'open-lyric',
+  'lyric-ready',
+  'send-lyric',
+  'top-lyric',
+  'close-lyric',
+  'set-lyric-lock-state',
+  'mouseenter-lyric',
+  'mouseleave-lyric',
+  'lyric-drag-start',
+  'lyric-drag-end',
+  'lyric-drag-move',
+  'set-ignore-mouse',
+  'control-back',
+  'set-store-value',
+  'update-gpu-acceleration',
+  'download:set-concurrency',
+  'open-directory',
+  'clear-audio-cache',
+  'update-remote-control-config',
+  'disable-shortcuts',
+  'enable-shortcuts',
+  'update-shortcuts',
+  'set-content-zoom',
+  'reset-content-zoom',
+  'resize-window',
+  'resize-mini-window',
+  'minimize-window',
+  'maximize-window',
+  'toggle-fullscreen',
+  'close-window',
+  'quit-app',
+  'mini-tray',
+  'mini-window',
+  'restore-window',
+  'mpris-position-update',
+  'tray-lyric-update',
+  'open-login',
+  'clear-downloads-history'
+]);
+
+const INVOKE_CHANNELS = new Set([
+  'cache-lyric',
+  'get-cached-lyric',
+  'resolve-cached-music-url',
+  'get-disk-cache-config',
+  'set-disk-cache-config',
+  'switch-disk-cache-directory',
+  'get-disk-cache-stats',
+  'clear-disk-cache',
+  'clear-lyric-cache',
+  'clear-lyrics-cache',
+  'download:add',
+  'download:add-batch',
+  'download:pause',
+  'download:resume',
+  'download:cancel',
+  'download:cancel-all',
+  'download:get-queue',
+  'download:get-completed',
+  'download:delete-completed',
+  'download:clear-completed',
+  'download:get-embedded-lyrics',
+  'download:provide-url',
+  'check-file-exists',
+  'get-supported-audio-formats',
+  'select-directory',
+  'get-downloads-path',
+  'save-lyric-file',
+  'import-custom-api-plugin',
+  'import-lx-music-script',
+  'import-music-source-plugin',
+  'fetch-music-source-plugin',
+  'get-system-fonts',
+  'get-search-suggestions',
+  'get-remote-control-config',
+  'get-local-ip-addresses',
+  'lx-music-http-request',
+  'lx-music-http-cancel',
+  'unblock-music',
+  'app-update:get-state',
+  'app-update:check',
+  'app-update:download',
+  'app-update:quit-and-install',
+  'app-update:open-release-page',
+  'shortcuts:get-config',
+  'shortcuts:validate',
+  'shortcuts:save',
+  'webdav:get-config',
+  'webdav:save-config',
+  'webdav:test',
+  'webdav:upload',
+  'webdav:download',
+  'get-content-zoom',
+  'get-system-scale-factor',
+  'is-fullscreen',
+  'is-window-maximized',
+  'scan-local-music',
+  'scan-local-music-with-stats',
+  'parse-local-music-metadata',
+  'get-lyrics'
+]);
+
+const SYNC_CHANNELS = new Set(['get-arch', 'get-platform', 'get-store-value']);
+
+const EVENT_CHANNELS = new Set([
+  'window-maximized-state',
+  'window-fullscreen-state',
+  'mini-mode',
+  'global-shortcut',
+  'update-app-shortcuts',
+  'mpris-seek',
+  'mpris-set-position',
+  'mpris-play',
+  'mpris-pause',
+  'language-changed',
+  'lyric-window-closed',
+  'lyric-window-ready',
+  'download:progress',
+  'download:state-change',
+  'download:batch-complete',
+  'download:request-url',
+  'app-update:state',
+  'lyric-control-back',
+  'lyric-mouse-presence',
+  'lyric-window-close',
+  'receive-lyric',
+  'navigate',
+  'send-cookies',
+  'shortcuts-updated'
+]);
+
+const assertAllowedChannel = (channel: string, allowed: Set<string>, operation: string): void => {
+  if (!allowed.has(channel)) {
+    throw new Error(`未授权的 IPC ${operation} 通道: ${channel}`);
+  }
+};
+
+const safeSend = (channel: string, ...args: any[]) => {
+  assertAllowedChannel(channel, SEND_CHANNELS, 'send');
+  ipcRenderer.send(channel, ...args);
+};
+
+const safeInvoke = (channel: string, ...args: any[]) => {
+  if (!INVOKE_CHANNELS.has(channel)) {
+    return Promise.reject(new Error(`未授权的 IPC invoke 通道: ${channel}`));
+  }
+  return ipcRenderer.invoke(channel, ...args);
+};
+
+const safeSendSync = (channel: string, ...args: any[]) => {
+  assertAllowedChannel(channel, SYNC_CHANNELS, 'sendSync');
+  return ipcRenderer.sendSync(channel, ...args);
+};
+
+const safeOn = (channel: string, listener: (...args: any[]) => void) => {
+  assertAllowedChannel(channel, EVENT_CHANNELS, 'on');
+  const wrappedListener = (_event: IpcRendererEvent, ...args: any[]) => listener(...args);
+  ipcRenderer.on(channel, wrappedListener);
+  return () => ipcRenderer.removeListener(channel, wrappedListener);
+};
+
+const safeElectronIpcRenderer = {
+  send: safeSend,
+  invoke: safeInvoke,
+  sendSync: safeSendSync,
+  on: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => {
+    assertAllowedChannel(channel, EVENT_CHANNELS, 'on');
+    ipcRenderer.on(channel, listener);
   },
-  // 调用主进程方法（有返回值）
-  invoke: (channel: string, ...args: any[]) => {
-    return ipcRenderer.invoke(channel, ...args);
+  once: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => {
+    assertAllowedChannel(channel, EVENT_CHANNELS, 'once');
+    ipcRenderer.once(channel, listener);
   },
-  // 监听主进程消息
-  on: (channel: string, listener: (...args: any[]) => void) => {
-    const wrappedListener = (_event: IpcRendererEvent, ...args: any[]) => listener(...args);
-    ipcRenderer.on(channel, wrappedListener);
-    return () => {
-      ipcRenderer.removeListener(channel, wrappedListener);
-    };
+  removeListener: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => {
+    assertAllowedChannel(channel, EVENT_CHANNELS, 'removeListener');
+    ipcRenderer.removeListener(channel, listener);
   },
-  // 移除所有监听器
   removeAllListeners: (channel: string) => {
+    assertAllowedChannel(channel, EVENT_CHANNELS, 'removeAllListeners');
+    ipcRenderer.removeAllListeners(channel);
+  }
+};
+
+// Legacy bridge preserves its callback signature while applying the same allowlists.
+const ipc = {
+  send: safeSend,
+  invoke: safeInvoke,
+  on: safeOn,
+  removeAllListeners: (channel: string) => {
+    assertAllowedChannel(channel, EVENT_CHANNELS, 'removeAllListeners');
     ipcRenderer.removeAllListeners(channel);
   }
 };
@@ -176,7 +351,7 @@ const ipc = {
 // just add to the DOM global.
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI);
+    contextBridge.exposeInMainWorld('electron', { ipcRenderer: safeElectronIpcRenderer });
     contextBridge.exposeInMainWorld('api', api);
     contextBridge.exposeInMainWorld('ipcRenderer', ipc);
   } catch (error) {
@@ -184,7 +359,7 @@ if (process.contextIsolated) {
   }
 } else {
   // @ts-ignore (define in dts)
-  window.electron = electronAPI;
+  window.electron = { ipcRenderer: safeElectronIpcRenderer };
   // @ts-ignore (define in dts)
   window.api = api;
   // @ts-ignore (define in dts)
