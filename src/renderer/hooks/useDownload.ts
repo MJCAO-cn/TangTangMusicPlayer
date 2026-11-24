@@ -54,7 +54,7 @@ export const useDownload = () => {
    */
   const downloadMusic = async (song: SongResult) => {
     // 浏览器版不具备本地文件系统下载能力；本地音乐本身已在磁盘上，无需再次下载。
-    if (!isElectron || song.source === 'local' || song.type === 'local') return;
+    if (!isElectron) return;
 
     const songId = Number(song.id);
     if (!Number.isSafeInteger(songId) || songId <= 0) {
@@ -83,11 +83,9 @@ export const useDownload = () => {
         (task) =>
           task.songInfo.id === songId &&
           task.type === type &&
-          [
-            DOWNLOAD_TASK_STATE.queued,
-            DOWNLOAD_TASK_STATE.downloading,
-            DOWNLOAD_TASK_STATE.paused
-          ].includes(task.state)
+          (task.state === DOWNLOAD_TASK_STATE.queued ||
+            task.state === DOWNLOAD_TASK_STATE.downloading ||
+            task.state === DOWNLOAD_TASK_STATE.paused)
       );
       if (alreadyQueued) {
         message.info(t('songItem.message.downloading'));
