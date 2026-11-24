@@ -22,7 +22,7 @@
     "fix-sandbox": "node scripts/fix-sandbox.js",
     "build:unpack": "npm run icons:generate && npm run build && electron-builder --dir",
     "build:win": "npm run icons:generate && npm run build && electron-builder --win --publish never",
-    "build:mac": "npm run build && electron-builder --mac --x64 --publish never && cp dist/latest-mac.yml dist/latest-mac-x64.yml && electron-builder --mac --arm64 --publish never && cp dist/latest-mac.yml dist/latest-mac-arm64.yml && node scripts/merge_latest_mac_yml.mjs dist/latest-mac-x64.yml dist/latest-mac-arm64.yml dist/latest-mac.yml",
+    "build:mac": "npm run icons:generate && npm run build && electron-builder --mac --x64 --publish never && cp dist/latest-mac.yml dist/latest-mac-x64.yml && electron-builder --mac --arm64 --publish never && cp dist/latest-mac.yml dist/latest-mac-arm64.yml && node scripts/merge_latest_mac_yml.mjs dist/latest-mac-x64.yml dist/latest-mac-arm64.yml dist/latest-mac.yml",
     "build:mac:x64": "npm run icons:generate && npm run build && electron-builder --mac --x64 --publish never && cp dist/latest-mac.yml dist/latest-mac-x64.yml",
     "build:mac:arm64": "npm run icons:generate && npm run build && electron-builder --mac --arm64 --publish never && cp dist/latest-mac.yml dist/latest-mac-arm64.yml",
     "build:linux": "npm run icons:generate && npm run build && electron-builder --linux --publish never",
@@ -166,7 +166,6 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSCameraUsageDescription": "Application requests access to the device's camera.",
         "NSDocumentsFolderUsageDescription": "Application requests access to the user's Documents folder.",
         "NSDownloadsFolderUsageDescription": "Application requests access to the user's Downloads folder."
       },
@@ -227,7 +226,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "糖糖音乐播放器",
       "include": "build/installer.nsh",
-      "deleteAppDataOnUninstall": true,
+      "deleteAppDataOnUninstall": false,
       "uninstallDisplayName": "糖糖音乐播放器"
     }
   },
