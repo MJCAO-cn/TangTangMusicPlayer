@@ -131,8 +131,8 @@
                   :key="item.id"
                   class="mb-2 animate-item"
                   :style="{
-                          animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
-                        }"
+                    animationDelay: calculateAnimationDelay(Number(index) % 30, 0.04)
+                  }"
                 >
                   <song-item
                     :index="Number(index)"
