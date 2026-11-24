@@ -79,8 +79,6 @@ const emit = defineEmits<{
   blur: [];
 }>();
 
-const inputRef = ref<HTMLInputElement | null>(null);
-
 const numericValue = computed(() => {
   const n = Number(props.modelValue);
   return Number.isFinite(n) ? n : 0;
