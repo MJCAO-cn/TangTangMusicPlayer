@@ -18,13 +18,13 @@
               <router-link class="app-menu-item-link" :to="item.path">
                 <i
                   class="iconfont app-menu-item-icon"
-                  :style="iconStyle(index)"
+                  :style="iconStyle(Number(index))"
                   :class="item.meta.icon"
                 ></i>
                 <span
                   v-if="settingsStore.setData.isMenuExpanded"
                   class="app-menu-item-text ml-3"
-                  :class="isChecked(index) ? 'text-primary' : ''"
+                  :class="isChecked(Number(index)) ? 'text-primary' : ''"
                   >{{ t(item.meta.title) }}</span
                 >
               </router-link>
