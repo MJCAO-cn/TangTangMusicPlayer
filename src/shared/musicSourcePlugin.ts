@@ -42,11 +42,11 @@ export const parsePluginMediaUrl = (
 
     for (const [name, content] of headerEntries) {
       if (
-        !/^[!#$%&'*+.^_`|~\\w-]+$/.test(name) ||
+        !/^[!#$%&'*+.^_`|~\w-]+$/.test(name) ||
         name.length > 128 ||
         typeof content !== 'string' ||
         content.length > 1024 ||
-        /[\\r\\n\\0]/.test(content) ||
+        /[\r\n\0]/.test(content) ||
         /^(host|connection|content-length|transfer-encoding|upgrade|proxy-.+)$/i.test(name)
       ) {
         return null;
