@@ -164,7 +164,7 @@ const toggleMenu = () => {
   @apply transition-all duration-200 text-gray-500 dark:text-gray-400;
 
   &:hover {
-    @apply text-green-500 scale-105 !important;
+    @apply text-primary scale-105 !important;
   }
 }
 
