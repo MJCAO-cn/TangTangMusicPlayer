@@ -105,7 +105,8 @@ export const initLxMusicHttp = () => {
         throw new Error('请求 ID 已在使用中');
       }
 
-      const options = request.options && typeof request.options === 'object' ? request.options : {};
+      const options: LxHttpRequest['options'] =
+        request.options && typeof request.options === 'object' ? request.options : {};
       const method = String(options.method || 'GET').toUpperCase();
       if (!ALLOWED_METHODS.has(method)) {
         throw new Error('不支持的 HTTP 请求方法');
@@ -156,9 +157,12 @@ export const initLxMusicHttp = () => {
           if (entries.length > 64) throw new Error('表单字段数量超出限制');
           const FormData = (await import('form-data')).default;
           const formData = new FormData();
+          let totalBytes = 0;
           for (const [key, value] of entries) {
-            if (typeof value !== 'string' || value.length > MAX_REQUEST_BODY_BYTES) {
-              throw new Error('表单字段内容超出限制');
+            if (typeof value !== 'string') throw new Error('表单字段内容无效');
+            totalBytes += Buffer.byteLength(value, 'utf8');
+            if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+              throw new Error('HTTP 请求体不能超过 1 MB');
             }
             formData.append(key, value);
           }
@@ -173,9 +177,10 @@ export const initLxMusicHttp = () => {
         }
 
         const requestedTimeout = Number(options.timeout);
-        const timeout = Number.isFinite(requestedTimeout)
-          ? Math.min(60000, Math.max(1000, requestedTimeout))
-          : 30000;
+        const timeout =
+          Number.isFinite(requestedTimeout) && requestedTimeout > 0
+            ? Math.min(60000, Math.max(1000, requestedTimeout))
+            : 30000;
         timeoutId = setTimeout(() => controller.abort(), timeout);
 
         const response = await fetch(url, fetchOptions);
